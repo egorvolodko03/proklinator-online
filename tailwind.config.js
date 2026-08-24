@@ -39,11 +39,11 @@ module.exports = {
         }
       },
       fontFamily: {
-        serif: ["Preciosa", "Georgia", "serif"],
-        accent: ["Preciosa", "serif"],
-        display: ["Preciosa", "serif"],
-        sans: ["Freeride", "system-ui", "-apple-system", "sans-serif"],
-        body: ["Freeride", "sans-serif"],
+        serif: ["var(--font-preciosa)", "Preciosa", "Georgia", "serif"],
+        accent: ["var(--font-preciosa)", "Preciosa", "serif"],
+        display: ["var(--font-preciosa)", "Preciosa", "serif"],
+        sans: ["var(--font-freeride)", "Freeride", "system-ui", "-apple-system", "sans-serif"],
+        body: ["var(--font-freeride)", "Freeride", "sans-serif"],
         mono: ['"JetBrains Mono"', "Courier New", "monospace"],
         script: ['"Marck Script"', "cursive"],
       },

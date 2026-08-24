@@ -1,5 +1,18 @@
 import type { Metadata } from 'next';
+import localFont from 'next/font/local';
 import './globals.css';
+
+const preciosa = localFont({
+  src: '../fonts/preciosa.ttf',
+  variable: '--font-preciosa',
+  display: 'swap',
+});
+
+const freeride = localFont({
+  src: '../fonts/freeride.otf',
+  variable: '--font-freeride',
+  display: 'swap',
+});
 
 export const metadata: Metadata = {
   title: 'Проклинатор онлайн — Темная Канцелярия Космической Кармы',
@@ -36,8 +49,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="ru" className="dark scroll-smooth">
-      <body className="min-h-screen bg-void-950 text-neutral-100 antialiased selection:bg-inferno-500 selection:text-white bg-noise">
+    <html lang="ru" className={`dark scroll-smooth ${preciosa.variable} ${freeride.variable}`}>
+      <body className="min-h-screen bg-void-950 text-neutral-100 antialiased selection:bg-inferno-500 selection:text-white bg-noise font-sans">
         {children}
       </body>
     </html>
