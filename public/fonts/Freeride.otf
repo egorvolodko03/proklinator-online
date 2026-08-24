@@ -1,0 +1,514 @@
+<!doctype html>
+<html lang="en" dir="LTR" class="directionLTR">
+    <head>
+        <meta charset="utf-8">
+        <title>Freeride.otf - uploadsfiles.com</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+        <meta name="description" content="Download file - Freeride.otf"/>
+        <meta name="keywords" content="freeride,otf" />
+        <link href="https://uploadsfiles.com/themes/spirit/assets/frontend/css/bootstrap.min.css" rel="stylesheet" type="text/css" media="all" />
+        <link href="https://uploadsfiles.com/themes/spirit/assets/frontend/css/stack-interface.css" rel="stylesheet" type="text/css" media="all" />
+        <link href="https://uploadsfiles.com/themes/spirit/assets/frontend/css/socicon.css" rel="stylesheet" type="text/css" media="all" />
+        <link href="https://uploadsfiles.com/themes/spirit/assets/frontend/css/lightbox.min.css" rel="stylesheet" type="text/css" media="all" />
+        <link href="https://uploadsfiles.com/themes/spirit/assets/frontend/css/flickity.css" rel="stylesheet" type="text/css" media="all" />
+        <link href="https://uploadsfiles.com/themes/spirit/assets/frontend/css/iconsmind.css" rel="stylesheet" type="text/css" media="all" />
+        <link href="https://uploadsfiles.com/themes/spirit/assets/frontend/css/jquery.steps.css" rel="stylesheet" type="text/css" media="all" />
+                    <link href="https://uploadsfiles.com/themes/spirit/assets/frontend/css/cookiealert.css" rel="stylesheet">
+                <link href="https://uploadsfiles.com/themes/spirit/assets/frontend/css/theme.css" rel="stylesheet" type="text/css" media="all" />
+                <link href="https://uploadsfiles.com/themes/spirit/assets/frontend/css/font-awesome.min.css" rel="stylesheet" type="text/css" media="all" />
+        <link href="https://uploadsfiles.com/themes/spirit/assets/frontend/css/custom.css" rel="stylesheet" type="text/css" media="all" />
+        <link href="https://fonts.googleapis.com/css?family=Open+Sans:200,300,400,400i,500,600,700%7CMerriweather:300,300i" rel="stylesheet"/>
+        <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet"/>
+        
+        <link rel="icon" type="image/x-icon" href="https://uploadsfiles.com/themes/spirit/assets/frontend/img/favicon/favicon.ico" />
+        <link rel="apple-touch-icon" sizes="180x180" href="https://uploadsfiles.com/themes/spirit/assets/frontend/img/favicon/apple-touch-icon.png"/>
+        <link rel="icon" type="image/png" sizes="32x32" href="https://uploadsfiles.com/themes/spirit/assets/frontend/img/favicon/favicon-32x32.png"/>
+        <link rel="icon" type="image/png" sizes="16x16" href="https://uploadsfiles.com/themes/spirit/assets/frontend/img/favicon/favicon-16x16.png"/>
+        <link rel="manifest" href="https://uploadsfiles.com/themes/spirit/assets/frontend/img/favicon/site.webmanifest"/>
+        <meta name="theme-color" content="#ffffff"/>
+        
+        <script>
+            var LOGGED_IN = false;
+        </script>
+        <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-2571090897727115"
+     crossorigin="anonymous"></script>
+<script>window.yaContextCb=window.yaContextCb||[]</script>
+<script src="https://yandex.ru/ads/system/context.js" async></script>
+                    
+        <script src="https://cdn.adfinity.pro/code/uploadsfiles.com/adfinity.js" charset="utf-8" async></script>
+        <!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-FGS40WR5R6"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-FGS40WR5R6');
+</script>
+    </head>
+    <body>
+        <a id="start"></a>
+                <div class="notification pos-top pos-right search-box bg--white border--bottom" data-animation="from-top" data-notification-link="search-box" style="display: none;">
+            <form action="https://uploadsfiles.com/search" method="GET">
+                <div class="row justify-content-center">
+                    <div class="col-lg-6 col-md-8">
+                        <input type="search" name="filterText" placeholder="Search publicly uploaded files..." />
+                    </div>
+                </div>
+                <!--end of row-->
+            </form>
+        </div>
+                <div class="nav-container clear-adblock">
+            <div>
+                <div class="bar bar--sm visible-xs">
+                    <div class="container">
+                        <div class="row">
+                            <div class="col-3 col-md-2">
+                                <a href="https://uploadsfiles.com">
+                                    <img class="logo logo-dark" alt="logo" src="https://uploadsfiles.com/themes/spirit/assets/images/logo/logo-whitebg.png">
+                                    <img class="logo logo-light" alt="logo" src="https://uploadsfiles.com/themes/spirit/assets/images/logo/logo.png">
+                                </a>
+                            </div>
+                            <div class="col-9 col-md-10 text-right">
+                                <a href="#" class="hamburger-toggle" data-toggle-class="#menu2;hidden-xs hidden-sm"> <i class="icon icon--sm stack-interface stack-menu"></i> </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <nav id="menu2" class="bar bar-2 hidden-xs">
+                    <div class="container">
+                        <div class="row">
+                            <div class="col-lg-2 text-center text-left-sm hidden-xs order-lg-2">
+                                <div class="bar__module">
+                                    <a href="https://uploadsfiles.com">
+                                        <img class="logo logo-dark" alt="logo" src="https://uploadsfiles.com/themes/spirit/assets/images/logo/logo-whitebg.png">
+                                        <img class="logo logo-light" alt="logo" src="https://uploadsfiles.com/themes/spirit/assets/images/logo/logo.png">
+                                    </a>
+                                </div>
+                            </div>
+                            <div class="col-lg-5 order-lg-1">
+                                <div class="bar__module">
+                                    <ul class="menu-horizontal text-left">
+                                        <li> <a href="https://uploadsfiles.com" >Home</a> </li>
+                                                                                    <li> <a href="https://uploadsfiles.com/search" >Search Files</a> </li>
+                                                                                
+                                                                                
+                                                                                    <li> <a href="https://uploadsfiles.com/upgrade" >Premium</a> </li>
+                                                                                <li> <a href="https://uploadsfiles.com/faq" >FAQ</a> </li>
+                                    </ul>
+                                </div>
+                            </div>
+                            <div class="col-lg-5 text-right text-left-xs text-left-sm order-lg-3">
+                                <div class="bar__module">
+                                    <ul class="menu-horizontal text-left">
+                                                                                <li>
+                                            <a href="#" data-notification-link="search-box">
+                                                <i class="stack-interface stack-search"></i>
+                                            </a>
+                                        </li>
+                                                                                                                        <li class="dropdown dropdown--absolute">
+                                            <span class="dropdown__trigger">
+                                                <img alt="English (en)" class="flag" src="https://uploadsfiles.com/themes/spirit/assets/images/flags/us.png">
+                                            </span>
+                                            <div class="dropdown__container">
+                                                <div class="container">
+                                                    <div class="row">
+                                                        <div class="col-lg-2 dropdown__content">
+                                                            <ul class="menu-vertical text-left">
+                                                                                                                                    <li>
+                                                                        <a href="https://uploadsfiles.com/set_language/English (en)">English (en)</a>
+                                                                    </li>
+                                                                                                                                    <li>
+                                                                        <a href="https://uploadsfiles.com/set_language/German">German</a>
+                                                                    </li>
+                                                                                                                                    <li>
+                                                                        <a href="https://uploadsfiles.com/set_language/Polish">Polish</a>
+                                                                    </li>
+                                                                                                                                    <li>
+                                                                        <a href="https://uploadsfiles.com/set_language/Russian">Russian</a>
+                                                                    </li>
+                                                                                                                            </ul>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </li>
+                                                                            </ul>
+                                </div>
+                                <div class="bar__module">
+                                                                            <a class="btn btn--sm type--uppercase" href="https://uploadsfiles.com/account/login"> <span class="btn__text">Login</span> </a>
+                                                                                <a class="btn btn--sm type--uppercase btn--primary" href="https://uploadsfiles.com/register"> <span class="btn__text">Register</span> </a>
+                                                                                                            </div>
+                            </div>
+                        </div>
+                    </div>
+                </nav>
+            </div>
+        </div>
+
+        <div class="main-container clear-adblock">
+
+                <section>
+        <div class="container">
+            <div class="row align-items-center justify-content-around download-page test5">
+                <div class="col-md-12 text-center">
+                    <h2>
+                        Freeride.otf
+                    </h2>
+                    <p></p>
+                </div>
+                    
+                                    <div class="col-md-12 text-center advert-wrapper top-advert">
+                        <!-- Yandex.RTB R-A-2182698-1 -->
+<div id="yandex_rtb_R-A-2182698-1"></div>
+<script>window.yaContextCb.push(()=>{
+  Ya.Context.AdvManager.render({
+    renderTo: 'yandex_rtb_R-A-2182698-1',
+    blockId: 'R-A-2182698-1'
+  })
+})</script>
+                    </div>
+                
+                <div class="col-md-12">
+                    <table class="border--round table--alternate-row download-page-compare">
+                        <tbody>
+                            <tr>
+                                <th class="responsiveInfoTable">
+                                    <strong>
+                                        Freeride.otf (90.39 KB)
+                                    </strong>
+                                    <p>Choose free or premium download</p>
+                                </th>
+                                <th>
+                                    <div class="btn-free-element">
+                                        <a href="#" onclick="triggerFreeDownload(); return false;" class="btn btn-subtle">
+                                            <span class="btn__text">
+                                                <i class="fas fa-stopwatch"></i>
+                                                SLOW DOWNLOAD
+                                            </span>
+                                        </a>
+                                    </div>
+                                    <div class="download-timer" style="display:none;">
+                                        <a href="#" onclick="return false;" class="btn btn-subtle">
+                                            <span class="btn__text">
+                                                <i class="fas fa-spinner fa-pulse"></i>
+                                                WAIT <span class="download-timer-seconds"></span>&nbsp;SEC.
+                                            </span>
+                                        </a>
+                                    </div>
+                                </th>
+                                <th>
+                                    <a class="btn btn--primary" href="https://uploadsfiles.com/register?f=6l4">
+                                        <span class="btn__text">
+                                            <i class="fas fa-bolt"></i>
+                                            FAST INSTANT DOWNLOAD
+                                        </span>
+                                    </a>
+                                </th>
+                            </tr>
+                            <tr>
+                                <td>
+                                    Download Type:
+                                </td>
+                                <td>Free</td>
+                                <td>
+                                    <strong>
+                                        Premium
+                                    </strong>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>
+                                    Download Speed:
+                                </td>
+                                <td>
+                                    48.83 KBps
+                                </td>
+                                <td>
+                                    <strong>
+                                        Maximum
+                                    </strong>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>
+                                    Waiting Time:
+                                </td>
+                                <td>5 Seconds</td>
+                                <td>
+                                    <strong>
+                                        Instant
+                                    </strong>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>
+                                    Site Advertising:
+                                </td>
+                                <td>
+                                    Yes                            
+                                </td>
+                                <td>
+                                    <strong>
+                                        None
+                                    </strong>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>
+                                    How Long To Keep Files:
+                                </td>
+                                <td>
+                                    60 Days
+                                </td>
+                                <td>
+                                    Forever
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>
+                                    Maximum File Upload Size:
+                                </td>
+                                <td>100.00 MB</td>
+                                <td>1.00 GB</td>
+                            </tr>
+                            <tr>
+                                <td>
+                                    Interface To Manage Uploaded Files:
+                                </td>
+                                <td>Not Available</td>
+                                <td>Available</td>
+                            </tr>
+                            <tr>
+                                <td>
+                                    fast download even when servers are busy:
+                                </td>
+                                <td>Not Available</td>
+                                <td>Available</td>
+                            </tr>
+                            <tr>
+                                <td>
+                                    Estimated Download Time:
+                                </td>
+                                <td>
+                                    <a href="#" onClick="triggerFreeDownload();
+                                            return false;">
+                                        2 seconds
+                                    </a>
+                                </td>
+                                <td>
+                                    <a class="link premiumBtn" href="https://uploadsfiles.com/register?f=6l4">
+                                        1 second                              
+                                    </a>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                
+                                    <div class="col-md-12 text-center advert-wrapper bottom-advert">
+                        <!-- Yandex.RTB R-A-2182698-2 -->
+<div id="yandex_rtb_R-A-2182698-2"></div>
+<script>window.yaContextCb.push(()=>{
+  Ya.Context.AdvManager.render({
+    renderTo: 'yandex_rtb_R-A-2182698-2',
+    blockId: 'R-A-2182698-2'
+  })
+})</script>
+                    </div>
+                            </div>
+        </div>
+    </section>
+
+    <section>
+    <div class="container">
+        <div class="row">
+            <div class="col-md-12 text-center">
+                <h2>Account Benefits</h2>
+            </div>
+            <div class="col-md-4">
+                <div class="feature boxed boxed--border">
+                    <ul>
+                        <li><i class="fas fa-check"></i>&nbsp;&nbsp;Direct downloads. No waiting.</li>
+                        <li><i class="fas fa-check"></i>&nbsp;&nbsp;No advertising.</li>
+                        <li><i class="fas fa-check"></i>&nbsp;&nbsp;Unlimited simultaneous downloads.</li>
+                        <li><i class="fas fa-check"></i>&nbsp;&nbsp;Maximum download speeds possible.</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="feature boxed boxed--border">
+                    <ul>
+                        <li><i class="fas fa-check"></i>&nbsp;&nbsp;Unique Members Area</li>
+                        <li><i class="fas fa-check"></i>&nbsp;&nbsp;Files in your premium account kept forever.</li>
+                        <li><i class="fas fa-check"></i>&nbsp;&nbsp;Upload files up to 1.00 GB in size.</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="feature boxed boxed--border">
+                    <ul>
+                        <li><i class="fas fa-check"></i>&nbsp;&nbsp;Download manager support.</li>
+                        <li><i class="fas fa-check"></i>&nbsp;&nbsp;No limits on the amount of downloads.</li>
+                        <li><i class="fas fa-check"></i>&nbsp;&nbsp;Low price per day.</li>
+                        <li><i class="fas fa-check"></i>&nbsp;&nbsp;No subscriptions.</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+            <footer class="text-center-xs space--xs">
+                <div class="container">
+                    <div class="row">
+                                                    <div class="col-md-12 text-center advert-wrapper advert-page-footer">
+                                <!-- Yandex.RTB R-A-2182698-3 -->
+<script>window.yaContextCb.push(()=>{
+  Ya.Context.AdvManager.render({
+    type: 'fullscreen',    
+    platform: 'touch',
+    blockId: 'R-A-2182698-3'
+  })
+})</script>
+<!-- Yandex.RTB R-A-2182698-4 -->
+<script>window.yaContextCb.push(()=>{
+  Ya.Context.AdvManager.render({
+    type: 'fullscreen',    
+    platform: 'desktop',
+    blockId: 'R-A-2182698-4'
+  })
+})</script>
+<!-- Yandex.RTB R-A-2182698-7 -->
+<script>window.yaContextCb.push(()=>{
+  Ya.Context.AdvManager.render({
+    type: 'floorAd',    
+    blockId: 'R-A-2182698-7'
+  })
+})</script>
+                            </div>
+                                                
+                        <div class="col-md-12 text-center">
+                            <ul class="list-inline">
+                                                                <li>
+                                    <a href="https://uploadsfiles.com/upgrade">
+                                        <span class="h6 type--uppercase">Premium</span>
+                                    </a>
+                                </li>
+                                                                                                <li>
+                                    <a href="https://uploadsfiles.com/register">
+                                        <span class="h6 type--uppercase">register</span>
+                                    </a>
+                                </li>
+                                                                
+                                
+                                <li>
+                                    <a href="https://uploadsfiles.com/report_file">
+                                        <span class="h6 type--uppercase">report file</span>
+                                    </a>
+                                </li>
+                                <li>
+                                    <a href="https://uploadsfiles.com/link_checker">
+                                        <span class="h6 type--uppercase">link checker</span>
+                                    </a>
+                                </li>
+                                                                <li>
+                                    <a href="https://uploadsfiles.com/api">
+                                        <span class="h6 type--uppercase">api</span>
+                                    </a>
+                                </li>
+                                                                <li>
+                                    <a href="https://uploadsfiles.com/contact">
+                                        <span class="h6 type--uppercase">contact</span>
+                                    </a>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    
+                    <!--end of row-->
+                    <div class="row">
+                        <div class="col-md-12 text-center">
+                            
+                        </div>
+                        <div class="col-md-12 text-center">
+                            <span class="type--fine-print">Copyright &copy; 2026 - uploadsfiles.com</span>
+                            <a class="type--fine-print" href="https://uploadsfiles.com/privacy">Privacy Policy</a>
+                            <a class="type--fine-print" href="https://uploadsfiles.com/terms">Terms &Amp; Conditions</a>
+                        </div>
+                    </div>
+                    <!--end of row-->
+                </div>
+                <!--end of container-->
+            </footer>
+        </div>
+        <!--<div class="loader"></div>-->
+        <a class="back-to-top inner-link" href="#start" data-scroll-class="100vh:active">
+            <i class="stack-interface stack-up-open-big"></i>
+        </a>
+        <script src="https://uploadsfiles.com/themes/spirit/assets/frontend/js/jquery-3.1.1.min.js"></script>
+        <script src="https://uploadsfiles.com/themes/spirit/assets/frontend/js/jquery.dataTables.min.js"></script>
+        <script src="https://uploadsfiles.com/themes/spirit/assets/frontend/js/flickity.min.js"></script>
+        <script src="https://uploadsfiles.com/themes/spirit/assets/frontend/js/typed.min.js"></script>
+        <script src="https://uploadsfiles.com/themes/spirit/assets/frontend/js/datepicker.js"></script>
+        <script src="https://uploadsfiles.com/themes/spirit/assets/frontend/js/granim.min.js"></script>
+        <script src="https://uploadsfiles.com/themes/spirit/assets/frontend/js/jquery.steps.min.js"></script>
+        <script src="https://uploadsfiles.com/themes/spirit/assets/frontend/js/countdown.min.js"></script>
+        <script src="https://uploadsfiles.com/themes/spirit/assets/frontend/js/smooth-scroll.min.js"></script>
+        <script src="https://uploadsfiles.com/themes/spirit/assets/frontend/js/scripts.js"></script>
+
+        <script>
+    var seconds = 5;
+    var started = false;
+    function display()
+    {
+        $('.btn-free-element').hide();
+        $('.download-timer').show();
+        if (seconds == 0)
+        {
+            $('.download-timer').html("<a class='btn' href='https://uploadsfiles.com/6l4?pt=bUVCRWJxT1JEeWpKWWkwR2tQS0Z0a1ZKZWxOa09IbDBUMUJzUjNseFFsaFZhRkpuZDFFOVBRPT0%3D'><span class='btn__text'>DOWNLOAD / VIEW NOW</span></a>");
+        } else
+        {
+            $('.download-timer-seconds').html(seconds);
+        }
+        seconds--;
+    }
+    
+    function triggerFreeDownload() {
+        if(started === true) {
+            return;
+        }
+        
+        started = true;
+        display();
+        countdownTimer = setInterval('display()', 1000);
+    }
+
+    //$(document).ready(function () {
+    //    display();
+    //    $('.download-timer-seconds').html(5);
+    //    countdownTimer = setInterval('display()', 1000);
+    //});
+</script>
+
+    
+        <script>
+            $(document).ready(function() {
+                // clear the display: none on notification divs. This doesn't actually
+                // show them, just avoids the flicker on pageload is display: none isn't set.
+                $('.notification').show();
+            });
+        </script>
+        
+        
+        
+        
+                <div class="alert text-center cookiealert" role="alert">
+            <strong>Cookies used on the website!</strong> &#x1F36A; This website uses cookies to ensure you get the best experience on our website. <a href="https://cookiesandyou.com/" target="_blank">Learn more</a>
+            <button type="button" class="btn btn-primary btn-sm acceptcookies">
+                Got it!
+            </button>
+        </div>
+        <script src="https://uploadsfiles.com/themes/spirit/assets/frontend/js/cookiealert.js"></script>
+        
+            </body>
+</html>

@@ -39,8 +39,11 @@ module.exports = {
         }
       },
       fontFamily: {
-        serif: ['"Cormorant Garamond"', "Georgia", "serif"],
-        sans: ["Inter", "system-ui", "-apple-system", "sans-serif"],
+        serif: ["Preciosa", "Georgia", "serif"],
+        accent: ["Preciosa", "serif"],
+        display: ["Preciosa", "serif"],
+        sans: ["Freeride", "system-ui", "-apple-system", "sans-serif"],
+        body: ["Freeride", "sans-serif"],
         mono: ['"JetBrains Mono"', "Courier New", "monospace"],
         script: ['"Marck Script"', "cursive"],
       },
