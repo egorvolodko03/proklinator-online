@@ -122,10 +122,10 @@ export const CurseCertificate: React.FC<CurseCertificateProps> = ({
 
           {/* Certificate Header */}
           <div className="text-center border-b border-karma-gold/20 pb-5">
-            <div className="inline-flex items-center gap-1.5 rounded-full border border-karma-gold/30 bg-karma-gold/10 px-3 py-0.5 text-[10px] font-semibold text-karma-gold tracking-wider uppercase mb-2">
+            <div className="inline-flex items-center gap-1.5 rounded-full border border-karma-gold/30 bg-karma-gold/10 px-3 py-0.5 text-[10px] font-semibold text-karma-gold tracking-wider uppercase mb-2 font-mono">
               <Sparkles className="w-3 h-3" /> Отдел Кармического Возмездия №666
             </div>
-            <h2 className="font-serif text-2xl sm:text-3xl font-black tracking-widest text-transparent bg-clip-text bg-gradient-to-r from-karma-gold via-amber-200 to-karma-gold uppercase drop-shadow-sm">
+            <h2 className="font-serif text-3xl sm:text-4xl font-bold tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-karma-gold via-amber-200 to-karma-gold uppercase drop-shadow-sm">
               Грамота Проклятия
             </h2>
             <p className="mt-1 font-mono text-xs text-zinc-400">
@@ -138,22 +138,22 @@ export const CurseCertificate: React.FC<CurseCertificateProps> = ({
             {/* Target Field */}
             <div className="rounded-xl border border-void-700 bg-void-850/70 p-3.5 backdrop-blur-sm">
               <div className="flex items-center justify-between text-xs text-zinc-400 mb-1">
-                <span className="font-semibold uppercase tracking-wider text-zinc-400">Субъект кармы:</span>
+                <span className="font-semibold uppercase tracking-wider text-zinc-400 font-mono text-[10px]">Субъект кармы:</span>
                 <span className="inline-flex items-center gap-1 rounded bg-void-700/80 px-2 py-0.5 text-[11px] text-zinc-300">
                   {categoryInfo.icon} {categoryInfo.label}
                 </span>
               </div>
-              <p className="font-serif text-lg font-bold text-white tracking-wide">
+              <p className="font-serif text-xl sm:text-2xl font-bold text-white tracking-wide">
                 {verdict.targetName}
               </p>
             </div>
 
             {/* Sin Field */}
             <div className="rounded-xl border border-void-700 bg-void-850/70 p-3.5 backdrop-blur-sm">
-              <span className="block text-xs font-semibold uppercase tracking-wider text-inferno-400 mb-1">
+              <span className="block text-[10px] font-semibold uppercase tracking-wider text-inferno-400 mb-1 font-mono">
                 Вменяемое деяние (Грех):
               </span>
-              <p className="text-zinc-200 italic leading-relaxed">
+              <p className="font-serif text-base sm:text-lg text-zinc-200 italic leading-relaxed">
                 «{verdict.sin}»
               </p>
             </div>
@@ -162,17 +162,17 @@ export const CurseCertificate: React.FC<CurseCertificateProps> = ({
             <div className="rounded-xl border-2 border-inferno-500/50 bg-gradient-to-br from-inferno-950/40 via-void-900 to-void-950 p-4 shadow-glow-crimson relative">
               <div className="flex items-center gap-2 mb-1.5">
                 <ShieldAlert className="w-4 h-4 text-inferno-400" />
-                <span className="text-xs font-bold uppercase tracking-wider text-inferno-400">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-inferno-400 font-mono">
                   Приговор Канцелярии:
                 </span>
                 <span className="ml-auto text-[10px] uppercase font-mono px-2 py-0.5 rounded bg-inferno-500/20 text-inferno-300 border border-inferno-500/40">
                   {verdict.severity === 'light' ? '🟢 Легкий' : verdict.severity === 'medium' ? '🟡 Офисный' : '🔴 Крах'}
                 </span>
               </div>
-              <h4 className="font-serif text-base font-bold text-yellow-300 mb-1">
+              <h4 className="font-serif text-lg font-bold text-yellow-300 mb-1">
                 {verdict.curseTitle}
               </h4>
-              <p className="text-sm text-zinc-100 font-medium leading-relaxed">
+              <p className="font-serif text-base text-zinc-100 font-medium leading-relaxed">
                 {verdict.curseText}
               </p>
             </div>
@@ -183,7 +183,7 @@ export const CurseCertificate: React.FC<CurseCertificateProps> = ({
             {/* Clerk Signature */}
             <div className="text-left">
               <div className="text-[10px] font-mono text-zinc-500 uppercase">Секретарь трибунала:</div>
-              <div className="font-serif text-xs font-semibold text-zinc-300 italic">
+              <div className="font-script text-xl text-amber-200 leading-tight">
                 {verdict.clerkSignature}
               </div>
               <div className="mt-1 flex items-center gap-1">
@@ -198,7 +198,7 @@ export const CurseCertificate: React.FC<CurseCertificateProps> = ({
             <div className="relative flex items-center justify-center">
               <div className="relative h-16 w-16 rounded-full bg-gradient-to-br from-red-600 via-inferno-600 to-red-900 p-1 shadow-[0_0_20px_rgba(220,38,38,0.7)] ring-2 ring-yellow-400/40 transform rotate-12">
                 <div className="flex h-full w-full items-center justify-center rounded-full border border-dashed border-yellow-200/50 bg-red-800 text-center">
-                  <div className="text-[9px] font-black uppercase tracking-tighter text-yellow-200">
+                  <div className="text-[9px] font-black uppercase tracking-tighter text-yellow-200 font-serif">
                     <div>КАРМА</div>
                     <Flame className="w-3.5 h-3.5 mx-auto text-yellow-300" />
                     <div>666</div>

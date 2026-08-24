@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400;1,600;1,700&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&family=Marck+Script&display=swap&subset=cyrillic,latin');
 
 @tailwind base;
 @tailwind components;
@@ -15,9 +15,9 @@ body {
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
   overflow-x: hidden;
   background-image: 
-    radial-gradient(circle at 50% 0%, rgba(139, 92, 246, 0.08) 0%, transparent 60%),
-    radial-gradient(circle at 10% 30%, rgba(255, 77, 40, 0.06) 0%, transparent 50%),
-    radial-gradient(circle at 90% 70%, rgba(139, 92, 246, 0.05) 0%, transparent 50%);
+    radial-gradient(circle at 50% 0%, rgba(139, 92, 246, 0.09) 0%, transparent 60%),
+    radial-gradient(circle at 15% 35%, rgba(255, 77, 40, 0.07) 0%, transparent 50%),
+    radial-gradient(circle at 85% 65%, rgba(139, 92, 246, 0.06) 0%, transparent 50%);
   background-attachment: fixed;
 }
 

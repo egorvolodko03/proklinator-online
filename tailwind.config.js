@@ -39,9 +39,10 @@ module.exports = {
         }
       },
       fontFamily: {
-        serif: ["Cinzel", "Georgia", "serif"],
+        serif: ['"Cormorant Garamond"', "Georgia", "serif"],
         sans: ["Inter", "system-ui", "-apple-system", "sans-serif"],
-        mono: ["JetBrains Mono", "Courier New", "monospace"],
+        mono: ['"JetBrains Mono"', "Courier New", "monospace"],
+        script: ['"Marck Script"', "cursive"],
       },
       boxShadow: {
         "glow-crimson": "0 0 25px rgba(255, 77, 40, 0.4)",

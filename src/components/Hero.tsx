@@ -78,12 +78,12 @@ export const Hero: React.FC<HeroProps> = ({ onStartCurse, onOpenTipModal }) => {
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.6, delay: 0.1 }}
-          className="font-serif text-4xl font-extrabold tracking-tight sm:text-6xl md:text-7xl"
+          className="font-serif text-5xl font-bold tracking-tight sm:text-7xl md:text-8xl"
         >
-          <span className="bg-gradient-to-r from-white via-zinc-200 to-zinc-400 bg-clip-text text-transparent">
+          <span className="bg-gradient-to-r from-white via-zinc-100 to-zinc-300 bg-clip-text text-transparent">
             Проклинатор
           </span>{' '}
-          <span className="bg-gradient-to-r from-inferno-500 via-inferno-400 to-astral-400 bg-clip-text text-transparent drop-shadow-[0_0_35px_rgba(255,77,40,0.5)]">
+          <span className="bg-gradient-to-r from-inferno-500 via-inferno-400 to-astral-400 bg-clip-text text-transparent drop-shadow-[0_0_40px_rgba(255,77,40,0.6)]">
             Онлайн
           </span>
         </motion.h1>
@@ -112,7 +112,7 @@ export const Hero: React.FC<HeroProps> = ({ onStartCurse, onOpenTipModal }) => {
               sound.playClick();
               onStartCurse();
             }}
-            className="group relative flex w-full sm:w-auto items-center justify-center gap-3 overflow-hidden rounded-2xl bg-gradient-to-r from-inferno-600 via-inferno-500 to-astral-600 px-9 py-4 font-serif text-lg font-bold text-white shadow-glow-crimson transition-all duration-300 hover:scale-105 hover:shadow-[0_0_40px_rgba(255,77,40,0.7)] active:scale-95"
+            className="group relative flex w-full sm:w-auto items-center justify-center gap-3 overflow-hidden rounded-2xl bg-gradient-to-r from-inferno-600 via-inferno-500 to-astral-600 px-9 py-4 font-serif text-xl font-bold text-white shadow-glow-crimson transition-all duration-300 hover:scale-105 hover:shadow-[0_0_45px_rgba(255,77,40,0.75)] active:scale-95 tracking-wide"
           >
             <div className="absolute inset-0 bg-white/20 opacity-0 transition-opacity group-hover:opacity-100" />
             <Flame className="h-6 w-6 text-yellow-300 transition-transform group-hover:rotate-12 group-hover:scale-110" />
@@ -145,7 +145,7 @@ export const Hero: React.FC<HeroProps> = ({ onStartCurse, onOpenTipModal }) => {
               <Skull className="h-4 w-4" />
             </div>
             <div>
-              <h3 className="text-xs font-semibold text-zinc-200">100% этичное возмездие</h3>
+              <h3 className="font-serif text-sm font-bold text-zinc-100">100% этичное возмездие</h3>
               <p className="mt-0.5 text-[11px] text-zinc-400">Никакого вреда здоровью — только адские мелкие бытовые пакости.</p>
             </div>
           </div>
@@ -155,7 +155,7 @@ export const Hero: React.FC<HeroProps> = ({ onStartCurse, onOpenTipModal }) => {
               <Scroll className="h-4 w-4" />
             </div>
             <div>
-              <h3 className="text-xs font-semibold text-zinc-200">Официальная грамота</h3>
+              <h3 className="font-serif text-sm font-bold text-zinc-100">Официальная грамота</h3>
               <p className="mt-0.5 text-[11px] text-zinc-400">Печать Канцелярии, баркод и персональная ссылка для жертвы.</p>
             </div>
           </div>
@@ -165,7 +165,7 @@ export const Hero: React.FC<HeroProps> = ({ onStartCurse, onOpenTipModal }) => {
               <ShieldCheck className="h-4 w-4" />
             </div>
             <div>
-              <h3 className="text-xs font-semibold text-zinc-200">Анонимность клерка</h3>
+              <h3 className="font-serif text-sm font-bold text-zinc-100">Анонимность клерка</h3>
               <p className="mt-0.5 text-[11px] text-zinc-400">Ваше имя надежно скрыто за семью печатями астрального трибунала.</p>
             </div>
           </div>
