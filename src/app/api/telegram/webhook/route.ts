@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { verifySessionFromBot } from '@/app/api/auth/session/route';
+import { verifySessionFromBot } from '@/lib/authSessionStore';
 import { TelegramUserData } from '@/types';
 
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || '8633526756:AAG_RC5hwERAZ_fhX_Gq59Sz8iMpGa-0LcU';
