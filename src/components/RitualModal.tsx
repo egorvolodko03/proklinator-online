@@ -14,8 +14,7 @@ import {
   Check, 
   AlertCircle,
   Skull,
-  Zap,
-  HelpCircle
+  Zap
 } from 'lucide-react';
 import { Category, Curse, CurseVerdict, SeverityLevel } from '@/types';
 import { CATEGORY_LABELS, CLERKS, generateCaseNumber, formatDate } from '@/lib/utils';
@@ -175,6 +174,23 @@ export const RitualModal: React.FC<RitualModalProps> = ({
 
     setVerdict(newVerdict);
     setStep(4);
+
+    // Save to global backend registry
+    try {
+      fetch('/api/curses', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          targetName: newVerdict.targetName,
+          category: newVerdict.category,
+          sin: newVerdict.sin,
+          curseTitle: newVerdict.curseTitle,
+          severity: newVerdict.severity,
+        }),
+      }).catch((e) => console.log('Background save error:', e));
+    } catch {
+      // ignore
+    }
   };
 
   const handleProcessingComplete = () => {
@@ -207,7 +223,7 @@ export const RitualModal: React.FC<RitualModalProps> = ({
         <div className="flex items-center justify-between border-b border-void-800 px-6 py-4">
           <div className="flex items-center gap-2">
             <Flame className="w-5 h-5 text-inferno-400" />
-            <span className="font-serif text-sm sm:text-base font-bold text-zinc-100">
+            <span className="font-heading text-sm sm:text-base font-bold text-zinc-100">
               {step === 5 ? 'Официальный Приговор Канцелярии' : 'Обряд Наложения Проклятия'}
             </span>
           </div>
@@ -229,7 +245,7 @@ export const RitualModal: React.FC<RitualModalProps> = ({
         {/* Stepper Progress Bar (for Steps 1-3) */}
         {step <= 3 && (
           <div className="border-b border-void-800 bg-void-900/40 px-6 py-3">
-            <div className="flex items-center justify-between text-xs font-medium">
+            <div className="flex items-center justify-between text-xs font-semibold">
               <span className={step >= 1 ? 'text-inferno-400' : 'text-zinc-500'}>
                 1. Жертва
               </span>
@@ -278,7 +294,7 @@ export const RitualModal: React.FC<RitualModalProps> = ({
                 className="space-y-6"
               >
                 <div>
-                  <h3 className="font-serif text-xl font-bold text-white flex items-center gap-2">
+                  <h3 className="font-heading text-lg sm:text-xl font-bold text-white flex items-center gap-2">
                     <User className="w-5 h-5 text-inferno-400" />
                     Кого проклинаем?
                   </h3>
@@ -289,7 +305,7 @@ export const RitualModal: React.FC<RitualModalProps> = ({
 
                 {/* Name Input */}
                 <div>
-                  <label className="block text-xs font-semibold text-zinc-300 uppercase tracking-wider mb-2">
+                  <label className="block text-xs font-semibold text-zinc-300 uppercase tracking-wider mb-2 font-mono">
                     Имя / Псевдоним субъекта:
                   </label>
                   <input
@@ -303,13 +319,13 @@ export const RitualModal: React.FC<RitualModalProps> = ({
                     placeholder="Например: Марина из бухгалтерии, Сосед с дрелью, Бывший..."
                     maxLength={60}
                     autoFocus
-                    className="w-full rounded-xl border border-void-700 bg-void-900 px-4 py-3.5 text-sm text-white placeholder-zinc-500 focus:border-inferno-500 focus:outline-none focus:ring-2 focus:ring-inferno-500/20 transition-all"
+                    className="w-full rounded-xl border border-void-700 bg-void-900 px-4 py-3.5 text-sm text-white placeholder-zinc-500 focus:border-inferno-500 focus:outline-none focus:ring-2 focus:ring-inferno-500/20 transition-all font-sans"
                   />
                 </div>
 
                 {/* Quick Category Chips */}
                 <div>
-                  <label className="block text-xs font-semibold text-zinc-300 uppercase tracking-wider mb-2">
+                  <label className="block text-xs font-semibold text-zinc-300 uppercase tracking-wider mb-2 font-mono">
                     Категория нарушителя:
                   </label>
                   <div className="flex flex-wrap gap-2">
@@ -324,7 +340,7 @@ export const RitualModal: React.FC<RitualModalProps> = ({
                             sound.playClick();
                             setCategory(cat);
                           }}
-                          className={`flex items-center gap-1.5 rounded-xl border px-3 py-2 text-xs font-medium transition-all ${
+                          className={`flex items-center gap-1.5 rounded-xl border px-3 py-2 text-xs font-semibold transition-all ${
                             isSelected
                               ? 'border-inferno-500 bg-inferno-500/15 text-inferno-300 shadow-glow-crimson'
                               : 'border-void-700 bg-void-900 text-zinc-400 hover:border-void-600 hover:text-zinc-200'
@@ -342,7 +358,7 @@ export const RitualModal: React.FC<RitualModalProps> = ({
                 <div className="pt-2 flex justify-end">
                   <button
                     onClick={handleNextFromStep1}
-                    className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-inferno-600 to-inferno-500 px-6 py-3 text-sm font-bold text-white shadow-glow-crimson hover:scale-105 active:scale-95 transition-all"
+                    className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-inferno-600 to-inferno-500 px-6 py-3 text-sm font-bold text-white shadow-glow-crimson hover:scale-105 active:scale-95 transition-all font-heading"
                   >
                     <span>Далее: Зафиксировать грех</span>
                     <ArrowRight className="w-4 h-4" />
@@ -363,7 +379,7 @@ export const RitualModal: React.FC<RitualModalProps> = ({
               >
                 <div className="flex items-center justify-between">
                   <div>
-                    <h3 className="font-serif text-xl font-bold text-white flex items-center gap-2">
+                    <h3 className="font-heading text-lg sm:text-xl font-bold text-white flex items-center gap-2">
                       <FileText className="w-5 h-5 text-inferno-400" />
                       Что он(а) сделал(а)?
                     </h3>
@@ -394,16 +410,16 @@ export const RitualModal: React.FC<RitualModalProps> = ({
                     placeholder="Например: Игнорит в почте 2 недели, а потом пишет 'актуально?'..."
                     rows={3}
                     maxLength={180}
-                    className="w-full rounded-xl border border-void-700 bg-void-900 p-4 text-sm text-white placeholder-zinc-500 focus:border-inferno-500 focus:outline-none focus:ring-2 focus:ring-inferno-500/20 transition-all resize-none"
+                    className="w-full rounded-xl border border-void-700 bg-void-900 p-4 text-sm text-white placeholder-zinc-500 focus:border-inferno-500 focus:outline-none focus:ring-2 focus:ring-inferno-500/20 transition-all resize-none font-sans"
                   />
-                  <div className="mt-1 text-right text-[11px] text-zinc-500">
+                  <div className="mt-1 text-right text-[11px] text-zinc-500 font-mono">
                     {sin.length}/180 символов
                   </div>
                 </div>
 
                 {/* Popular Quick Sin Suggestions */}
                 <div>
-                  <label className="block text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-2">
+                  <label className="block text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-2 font-mono">
                     Популярные грехи из протоколов:
                   </label>
                   <div className="space-y-1.5">
@@ -421,7 +437,7 @@ export const RitualModal: React.FC<RitualModalProps> = ({
                           setSin(s);
                           setErrorMsg('');
                         }}
-                        className="block w-full text-left rounded-lg border border-void-800 bg-void-900/60 px-3 py-2 text-xs text-zinc-300 hover:border-inferno-500/40 hover:bg-void-850 hover:text-white transition-all"
+                        className="block w-full text-left rounded-lg border border-void-800 bg-void-900/60 px-3 py-2 text-xs text-zinc-300 hover:border-inferno-500/40 hover:bg-void-850 hover:text-white transition-all font-sans"
                       >
                         ⚡ «{s}»
                       </button>
@@ -444,7 +460,7 @@ export const RitualModal: React.FC<RitualModalProps> = ({
 
                   <button
                     onClick={handleNextFromStep2}
-                    className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-inferno-600 to-inferno-500 px-6 py-3 text-sm font-bold text-white shadow-glow-crimson hover:scale-105 active:scale-95 transition-all"
+                    className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-inferno-600 to-inferno-500 px-6 py-3 text-sm font-bold text-white shadow-glow-crimson hover:scale-105 active:scale-95 transition-all font-heading"
                   >
                     <span>Далее: Выбрать кару</span>
                     <ArrowRight className="w-4 h-4" />
@@ -464,7 +480,7 @@ export const RitualModal: React.FC<RitualModalProps> = ({
                 className="space-y-6"
               >
                 <div>
-                  <h3 className="font-serif text-xl font-bold text-white flex items-center gap-2">
+                  <h3 className="font-heading text-lg sm:text-xl font-bold text-white flex items-center gap-2">
                     <Sparkles className="w-5 h-5 text-karma-gold" />
                     Какую кару выберем?
                   </h3>
@@ -494,10 +510,10 @@ export const RitualModal: React.FC<RitualModalProps> = ({
                           </span>
                           {isSelected && <Check className="w-4 h-4 text-inferno-400" />}
                         </div>
-                        <h4 className="font-serif text-xs font-bold text-white mb-1">
+                        <h4 className="font-heading text-xs font-bold text-white mb-1">
                           {opt.title}
                         </h4>
-                        <p className="text-[11px] text-zinc-400 leading-snug">
+                        <p className="text-[11px] text-zinc-400 leading-snug font-normal">
                           {opt.description}
                         </p>
                       </div>
@@ -508,7 +524,7 @@ export const RitualModal: React.FC<RitualModalProps> = ({
                 {/* Current Selected Curse Card */}
                 <div className="rounded-2xl border border-void-700 bg-void-900 p-4 relative overflow-hidden">
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs font-bold uppercase tracking-wider text-inferno-400 flex items-center gap-1.5">
+                    <span className="text-xs font-bold uppercase tracking-wider text-inferno-400 flex items-center gap-1.5 font-heading">
                       <span>{selectedCurse.icon}</span>
                       <span>{selectedCurse.title}</span>
                     </span>
@@ -524,7 +540,7 @@ export const RitualModal: React.FC<RitualModalProps> = ({
                   </div>
 
                   {!isCustomCurse ? (
-                    <p className="font-serif text-sm font-medium text-zinc-100 italic leading-relaxed">
+                    <p className="text-sm font-medium text-zinc-100 italic leading-relaxed font-sans">
                       «{selectedCurse.description}»
                     </p>
                   ) : (
@@ -534,7 +550,7 @@ export const RitualModal: React.FC<RitualModalProps> = ({
                       placeholder="Напишите собственную абсурдную кару..."
                       rows={2}
                       maxLength={140}
-                      className="w-full rounded-lg border border-void-700 bg-void-950 p-2.5 text-xs text-white placeholder-zinc-500 focus:border-inferno-500 focus:outline-none"
+                      className="w-full rounded-lg border border-void-700 bg-void-950 p-2.5 text-xs text-white placeholder-zinc-500 focus:border-inferno-500 focus:outline-none font-sans"
                     />
                   )}
 
@@ -549,7 +565,7 @@ export const RitualModal: React.FC<RitualModalProps> = ({
                           setCustomCurseText(selectedCurse.description);
                         }
                       }}
-                      className="text-[11px] text-zinc-400 hover:text-astral-400 underline transition-colors"
+                      className="text-[11px] text-zinc-400 hover:text-astral-400 underline transition-colors font-sans"
                     >
                       {isCustomCurse ? 'Вернуться к готовым вариантам' : 'Сформулировать свою кару вручную'}
                     </button>
@@ -571,7 +587,7 @@ export const RitualModal: React.FC<RitualModalProps> = ({
 
                   <button
                     onClick={handleStartSummoning}
-                    className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-inferno-600 via-inferno-500 to-astral-600 px-7 py-3 text-sm font-bold text-white shadow-glow-crimson hover:scale-105 active:scale-95 transition-all"
+                    className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-inferno-600 via-inferno-500 to-astral-600 px-7 py-3 text-sm font-bold text-white shadow-glow-crimson hover:scale-105 active:scale-95 transition-all font-heading"
                   >
                     <Flame className="w-4 h-4 text-yellow-300" />
                     <span>Наложить печать канцелярии</span>

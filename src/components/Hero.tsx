@@ -73,12 +73,12 @@ export const Hero: React.FC<HeroProps> = ({ onStartCurse, onOpenTipModal }) => {
           <span className="text-zinc-400">кармических приговоров исполнено</span>
         </motion.div>
 
-        {/* Main Title */}
+        {/* Main Title - Pure Modern Sans Serif */}
         <motion.h1
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.6, delay: 0.1 }}
-          className="font-serif text-5xl font-bold tracking-tight sm:text-7xl md:text-8xl"
+          className="font-heading text-4xl font-extrabold tracking-tight sm:text-6xl md:text-7xl"
         >
           <span className="bg-gradient-to-r from-white via-zinc-100 to-zinc-300 bg-clip-text text-transparent">
             Проклинатор
@@ -93,7 +93,7 @@ export const Hero: React.FC<HeroProps> = ({ onStartCurse, onOpenTipModal }) => {
           initial={{ opacity: 0, y: 15 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.2 }}
-          className="mx-auto mt-6 max-w-2xl text-base sm:text-xl text-zinc-300 leading-relaxed font-light"
+          className="mx-auto mt-6 max-w-2xl text-base sm:text-lg text-zinc-300 leading-relaxed font-normal"
         >
           Одно действие — и вы счастливы. Направьте безжалостную космическую бюрократию и абсурдные микро-кары на обидчика.
         </motion.p>
@@ -112,10 +112,10 @@ export const Hero: React.FC<HeroProps> = ({ onStartCurse, onOpenTipModal }) => {
               sound.playClick();
               onStartCurse();
             }}
-            className="group relative flex w-full sm:w-auto items-center justify-center gap-3 overflow-hidden rounded-2xl bg-gradient-to-r from-inferno-600 via-inferno-500 to-astral-600 px-9 py-4 font-serif text-xl font-bold text-white shadow-glow-crimson transition-all duration-300 hover:scale-105 hover:shadow-[0_0_45px_rgba(255,77,40,0.75)] active:scale-95 tracking-wide"
+            className="group relative flex w-full sm:w-auto items-center justify-center gap-3 overflow-hidden rounded-2xl bg-gradient-to-r from-inferno-600 via-inferno-500 to-astral-600 px-9 py-4 font-heading text-base sm:text-lg font-bold text-white shadow-glow-crimson transition-all duration-300 hover:scale-105 hover:shadow-[0_0_45px_rgba(255,77,40,0.75)] active:scale-95 tracking-wide"
           >
             <div className="absolute inset-0 bg-white/20 opacity-0 transition-opacity group-hover:opacity-100" />
-            <Flame className="h-6 w-6 text-yellow-300 transition-transform group-hover:rotate-12 group-hover:scale-110" />
+            <Flame className="h-5 w-5 text-yellow-300 transition-transform group-hover:rotate-12 group-hover:scale-110" />
             <span>Призвать кару</span>
             <ChevronRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />
           </button>
@@ -145,8 +145,8 @@ export const Hero: React.FC<HeroProps> = ({ onStartCurse, onOpenTipModal }) => {
               <Skull className="h-4 w-4" />
             </div>
             <div>
-              <h3 className="font-serif text-sm font-bold text-zinc-100">100% этичное возмездие</h3>
-              <p className="mt-0.5 text-[11px] text-zinc-400">Никакого вреда здоровью — только адские мелкие бытовые пакости.</p>
+              <h3 className="font-heading text-xs font-bold text-zinc-100">100% этичное возмездие</h3>
+              <p className="mt-0.5 text-xs text-zinc-400">Никакого вреда здоровью — только адские мелкие бытовые пакости.</p>
             </div>
           </div>
 
@@ -155,8 +155,8 @@ export const Hero: React.FC<HeroProps> = ({ onStartCurse, onOpenTipModal }) => {
               <Scroll className="h-4 w-4" />
             </div>
             <div>
-              <h3 className="font-serif text-sm font-bold text-zinc-100">Официальная грамота</h3>
-              <p className="mt-0.5 text-[11px] text-zinc-400">Печать Канцелярии, баркод и персональная ссылка для жертвы.</p>
+              <h3 className="font-heading text-xs font-bold text-zinc-100">Официальная грамота</h3>
+              <p className="mt-0.5 text-xs text-zinc-400">Печать Канцелярии, баркод и персональная ссылка для жертвы.</p>
             </div>
           </div>
 
@@ -165,8 +165,8 @@ export const Hero: React.FC<HeroProps> = ({ onStartCurse, onOpenTipModal }) => {
               <ShieldCheck className="h-4 w-4" />
             </div>
             <div>
-              <h3 className="font-serif text-sm font-bold text-zinc-100">Анонимность клерка</h3>
-              <p className="mt-0.5 text-[11px] text-zinc-400">Ваше имя надежно скрыто за семью печатями астрального трибунала.</p>
+              <h3 className="font-heading text-xs font-bold text-zinc-100">Анонимность клерка</h3>
+              <p className="mt-0.5 text-xs text-zinc-400">Ваше имя надежно скрыто за семью печатями астрального трибунала.</p>
             </div>
           </div>
         </motion.div>

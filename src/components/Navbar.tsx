@@ -35,14 +35,14 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenTipModal }) => {
 
           <div>
             <div className="flex items-center gap-2">
-              <span className="font-serif text-lg font-bold tracking-wider text-white">
+              <span className="font-heading text-base font-bold tracking-tight text-white">
                 Проклинатор
               </span>
               <span className="rounded-full bg-inferno-500/10 px-2 py-0.5 text-[10px] font-semibold text-inferno-400 border border-inferno-500/30">
                 Онлайн
               </span>
             </div>
-            <p className="hidden text-[11px] text-zinc-400 sm:block">
+            <p className="hidden text-[11px] text-zinc-400 sm:block font-sans">
               Темная Канцелярия Космической Кармы
             </p>
           </div>
@@ -56,7 +56,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenTipModal }) => {
               sound.playClick();
               onOpenTipModal();
             }}
-            className="flex items-center gap-1.5 rounded-lg border border-karma-gold/30 bg-karma-gold/10 px-3 py-1.5 text-xs font-medium text-karma-gold transition-all hover:bg-karma-gold/20 hover:border-karma-gold/60 hover:shadow-glow-gold active:scale-95"
+            className="flex items-center gap-1.5 rounded-lg border border-karma-gold/30 bg-karma-gold/10 px-3 py-1.5 text-xs font-semibold text-karma-gold transition-all hover:bg-karma-gold/20 hover:border-karma-gold/60 hover:shadow-glow-gold active:scale-95 font-heading"
             title="Откупиться от кармы или поддержать клерков"
           >
             <Shield className="h-3.5 w-3.5" />

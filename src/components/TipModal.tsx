@@ -75,7 +75,7 @@ export const TipModal: React.FC<TipModalProps> = ({ isOpen, onClose, onShowToast
         <div className="flex items-center justify-between border-b border-void-800 pb-4">
           <div className="flex items-center gap-2">
             <Shield className="w-5 h-5 text-karma-gold" />
-            <h3 className="font-serif text-lg font-bold text-white">
+            <h3 className="font-heading text-base sm:text-lg font-bold text-white">
               Откуп от кармы & Поддержка клерков
             </h3>
           </div>
@@ -95,7 +95,7 @@ export const TipModal: React.FC<TipModalProps> = ({ isOpen, onClose, onShowToast
         {/* Content */}
         {!isDone ? (
           <div className="mt-5 space-y-4">
-            <p className="text-xs text-zinc-400 leading-relaxed">
+            <p className="text-xs text-zinc-400 leading-relaxed font-sans">
               Кармическая канцелярия работает без перерывов на обед. Выберите форму подношения, чтобы задобрить духов бюрократии или очистить свою историю.
             </p>
 
@@ -114,11 +114,11 @@ export const TipModal: React.FC<TipModalProps> = ({ isOpen, onClose, onShowToast
                     <span className="text-2xl">{sac.icon}</span>
                     <div>
                       <div className="flex items-center gap-2">
-                        <h4 className="font-serif text-sm font-bold text-white">
+                        <h4 className="font-heading text-xs sm:text-sm font-bold text-white">
                           {sac.title}
                         </h4>
                       </div>
-                      <p className="mt-0.5 text-xs text-zinc-400 leading-snug">
+                      <p className="mt-0.5 text-xs text-zinc-400 leading-snug font-sans">
                         {sac.description}
                       </p>
                     </div>
@@ -130,7 +130,7 @@ export const TipModal: React.FC<TipModalProps> = ({ isOpen, onClose, onShowToast
                       e.stopPropagation();
                       handleSacrifice(sac.title);
                     }}
-                    className="w-full sm:w-auto shrink-0 rounded-xl bg-gradient-to-r from-karma-amber to-karma-gold px-3.5 py-2 text-xs font-bold text-void-950 hover:brightness-110 active:scale-95 transition-all"
+                    className="w-full sm:w-auto shrink-0 rounded-xl bg-gradient-to-r from-karma-amber to-karma-gold px-3.5 py-2 text-xs font-bold text-void-950 hover:brightness-110 active:scale-95 transition-all font-heading"
                   >
                     {sac.actionText}
                   </button>
@@ -147,10 +147,10 @@ export const TipModal: React.FC<TipModalProps> = ({ isOpen, onClose, onShowToast
             <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-karma-gold/20 text-karma-gold border border-karma-gold/40">
               <Check className="w-8 h-8" />
             </div>
-            <h4 className="font-serif text-xl font-bold text-white">
+            <h4 className="font-heading text-lg sm:text-xl font-bold text-white">
               Индульгенция активирована!
             </h4>
-            <p className="text-xs text-zinc-300 max-w-sm mx-auto leading-relaxed">
+            <p className="text-xs text-zinc-300 max-w-sm mx-auto leading-relaxed font-sans">
               Ваша кармическая квота пополнена. Все негативные вибрации перенаправлены в отдел утилизации астрального мусора.
             </p>
             <button
@@ -159,7 +159,7 @@ export const TipModal: React.FC<TipModalProps> = ({ isOpen, onClose, onShowToast
                 onClose();
                 setIsDone(false);
               }}
-              className="mt-4 rounded-xl bg-void-800 px-6 py-2.5 text-xs font-bold text-white hover:bg-void-700 transition-colors"
+              className="mt-4 rounded-xl bg-void-800 px-6 py-2.5 text-xs font-bold text-white hover:bg-void-700 transition-colors font-heading"
             >
               Вернуться к алтарю
             </button>

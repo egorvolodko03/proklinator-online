@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Marck+Script&display=swap&subset=cyrillic,latin');
+@import url('https://fonts.googleapis.com/css2?family=Unbounded:wght@400;600;700;800;900&family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700&display=swap&subset=cyrillic,latin');
 
 @tailwind base;
 @tailwind components;
@@ -12,7 +12,7 @@
 body {
   background-color: #09090b;
   color: #f4f4f5;
-  font-family: var(--font-freeride), system-ui, -apple-system, sans-serif;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
   overflow-x: hidden;
   background-image: 
     radial-gradient(circle at 50% 0%, rgba(139, 92, 246, 0.1) 0%, transparent 60%),
@@ -21,8 +21,9 @@ body {
   background-attachment: fixed;
 }
 
-h1, h2, h3, .font-serif, .font-accent, .font-display {
-  font-family: var(--font-preciosa), Georgia, serif;
+h1, h2, h3, .font-heading, .font-accent, .font-display {
+  font-family: 'Unbounded', 'Inter', system-ui, sans-serif;
+  letter-spacing: -0.02em;
 }
 
 /* Custom Sleek Gothic Scrollbar */

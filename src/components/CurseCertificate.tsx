@@ -2,7 +2,7 @@
 
 import React, { useRef, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Download, Copy, Send, RotateCcw, Flame, Check, ShieldAlert, Sparkles, Share2 } from 'lucide-react';
+import { Download, Copy, Send, RotateCcw, Flame, Check, ShieldAlert, Sparkles } from 'lucide-react';
 import { CurseVerdict } from '@/types';
 import { CATEGORY_LABELS } from '@/lib/utils';
 import { sound } from '@/lib/audio';
@@ -21,7 +21,6 @@ export const CurseCertificate: React.FC<CurseCertificateProps> = ({
 }) => {
   const certRef = useRef<HTMLDivElement | null>(null);
   const [isDownloading, setIsDownloading] = useState(false);
-  const [isSharing, setIsSharing] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
 
   const categoryInfo = CATEGORY_LABELS[verdict.category] || CATEGORY_LABELS.other;
@@ -92,51 +91,16 @@ export const CurseCertificate: React.FC<CurseCertificateProps> = ({
   };
 
   /**
-   * Smart Telegram Share:
-   * 1. If Web Share API with Files is supported, shares the actual PNG Certificate file directly into Telegram!
-   * 2. If desktop / web fallback, opens a beautifully formatted Telegram link with a rich OpenGraph preview.
+   * Direct Telegram Share:
+   * Opens telegram directly via https://t.me/share/url so browser/telegram app handles it natively.
    */
-  const handleShareTelegram = async () => {
+  const handleShareTelegram = () => {
     sound.playClick();
-    setIsSharing(true);
     const shareUrl = getShareUrl();
-
-    // Check if we can share file directly via Web Share API
-    if (certRef.current && navigator.share && navigator.canShare) {
-      try {
-        const dataUrl = await toPng(certRef.current, {
-          cacheBust: true,
-          quality: 0.95,
-          pixelRatio: 2,
-          backgroundColor: '#09090b',
-        });
-
-        const res = await fetch(dataUrl);
-        const blob = await res.blob();
-        const file = new File([blob], `Gramota-Karmy-${verdict.targetName}.png`, { type: 'image/png' });
-
-        if (navigator.canShare({ files: [file] })) {
-          await navigator.share({
-            title: 'Грамота Темной Канцелярии Кармы',
-            text: `⚖️ Грамота проклятия на имя "${verdict.targetName}"!\nДеяние: ${verdict.sin}\nКара: ${verdict.curseText}\n\nСмотреть онлайн:`,
-            url: shareUrl,
-            files: [file],
-          });
-          onShowToast('✨ Грамота отправлена!', 'success');
-          setIsSharing(false);
-          return;
-        }
-      } catch (err) {
-        console.log('Web share fallback to link:', err);
-      }
-    }
-
-    // Clean Telegram Web Share fallback
     const formattedText = `⚖️ ТЕМНАЯ КАНЦЕЛЯРИЯ КАРМЫ\n📜 Официальный приговор гражданину: «${verdict.targetName}»\n\n⚡ Вменяемое деяние:\n«${verdict.sin}»\n\n🩸 Приговор Канцелярии:\n«${verdict.curseText}»\n\n🔗 Посмотреть заверенную грамоту:`;
     
     const tgUrl = `https://t.me/share/url?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(formattedText)}`;
     window.open(tgUrl, '_blank');
-    setIsSharing(false);
   };
 
   return (
@@ -145,13 +109,13 @@ export const CurseCertificate: React.FC<CurseCertificateProps> = ({
       <div className="w-full max-w-xl p-2 sm:p-4">
         <div
           ref={certRef}
-          className="relative overflow-hidden rounded-3xl border-2 border-karma-gold/40 bg-gradient-to-b from-void-900 via-void-950 to-void-900 p-6 sm:p-8 text-neutral-100 shadow-[0_0_50px_rgba(251,191,36,0.15)]"
+          className="relative overflow-hidden rounded-3xl border-2 border-karma-gold/50 bg-gradient-to-b from-void-900 via-void-950 to-void-900 p-6 sm:p-8 text-neutral-100 shadow-[0_0_50px_rgba(251,191,36,0.15)]"
         >
           {/* Gothic Decorative Corner Ornaments */}
-          <div className="absolute top-2 left-2 text-karma-gold/40 text-xs font-mono select-none">❖ ━━━━</div>
-          <div className="absolute top-2 right-2 text-karma-gold/40 text-xs font-mono select-none">━━━━ ❖</div>
-          <div className="absolute bottom-2 left-2 text-karma-gold/40 text-xs font-mono select-none">❖ ━━━━</div>
-          <div className="absolute bottom-2 right-2 text-karma-gold/40 text-xs font-mono select-none">━━━━ ❖</div>
+          <div className="absolute top-2.5 left-3 text-karma-gold/50 text-xs font-mono select-none">❖ ━━━━</div>
+          <div className="absolute top-2.5 right-3 text-karma-gold/50 text-xs font-mono select-none">━━━━ ❖</div>
+          <div className="absolute bottom-2.5 left-3 text-karma-gold/50 text-xs font-mono select-none">❖ ━━━━</div>
+          <div className="absolute bottom-2.5 right-3 text-karma-gold/50 text-xs font-mono select-none">━━━━ ❖</div>
 
           {/* Background Watermark Pentagram */}
           <div className="pointer-events-none absolute inset-0 flex items-center justify-center opacity-5">
@@ -165,7 +129,7 @@ export const CurseCertificate: React.FC<CurseCertificateProps> = ({
             <div className="inline-flex items-center gap-1.5 rounded-full border border-karma-gold/30 bg-karma-gold/10 px-3 py-0.5 text-[10px] font-semibold text-karma-gold tracking-wider uppercase mb-2 font-mono">
               <Sparkles className="w-3 h-3" /> Отдел Кармического Возмездия №666
             </div>
-            <h2 className="font-serif text-3xl sm:text-4xl font-bold tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-karma-gold via-amber-200 to-karma-gold uppercase drop-shadow-sm">
+            <h2 className="font-heading text-2xl sm:text-3xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-karma-gold via-amber-200 to-karma-gold uppercase drop-shadow-sm">
               Грамота Проклятия
             </h2>
             <p className="mt-1 font-mono text-xs text-zinc-400">
@@ -179,11 +143,11 @@ export const CurseCertificate: React.FC<CurseCertificateProps> = ({
             <div className="rounded-xl border border-void-700 bg-void-850/70 p-3.5 backdrop-blur-sm">
               <div className="flex items-center justify-between text-xs text-zinc-400 mb-1">
                 <span className="font-semibold uppercase tracking-wider text-zinc-400 font-mono text-[10px]">Субъект кармы:</span>
-                <span className="inline-flex items-center gap-1 rounded bg-void-700/80 px-2 py-0.5 text-[11px] text-zinc-300">
+                <span className="inline-flex items-center gap-1 rounded bg-void-700/80 px-2 py-0.5 text-[11px] text-zinc-300 font-medium">
                   {categoryInfo.icon} {categoryInfo.label}
                 </span>
               </div>
-              <p className="font-serif text-2xl sm:text-3xl font-bold text-white tracking-wide">
+              <p className="font-heading text-xl sm:text-2xl font-bold text-white tracking-tight">
                 {verdict.targetName}
               </p>
             </div>
@@ -193,7 +157,7 @@ export const CurseCertificate: React.FC<CurseCertificateProps> = ({
               <span className="block text-[10px] font-semibold uppercase tracking-wider text-inferno-400 mb-1 font-mono">
                 Вменяемое деяние (Грех):
               </span>
-              <p className="font-sans text-sm sm:text-base text-zinc-200 italic leading-relaxed">
+              <p className="text-sm sm:text-base text-zinc-200 italic leading-relaxed font-normal">
                 «{verdict.sin}»
               </p>
             </div>
@@ -209,10 +173,10 @@ export const CurseCertificate: React.FC<CurseCertificateProps> = ({
                   {verdict.severity === 'light' ? '🟢 Легкий' : verdict.severity === 'medium' ? '🟡 Офисный' : '🔴 Крах'}
                 </span>
               </div>
-              <h4 className="font-serif text-lg font-bold text-yellow-300 mb-1">
+              <h4 className="font-heading text-base sm:text-lg font-bold text-yellow-300 mb-1">
                 {verdict.curseTitle}
               </h4>
-              <p className="font-sans text-sm sm:text-base text-zinc-100 font-medium leading-relaxed">
+              <p className="text-sm sm:text-base text-zinc-100 font-medium leading-relaxed">
                 {verdict.curseText}
               </p>
             </div>
@@ -223,7 +187,7 @@ export const CurseCertificate: React.FC<CurseCertificateProps> = ({
             {/* Clerk Signature */}
             <div className="text-left">
               <div className="text-[10px] font-mono text-zinc-500 uppercase">Секретарь трибунала:</div>
-              <div className="font-script text-2xl text-amber-200 leading-tight">
+              <div className="font-heading text-sm sm:text-base font-bold text-amber-200 leading-tight">
                 {verdict.clerkSignature}
               </div>
               <div className="mt-1 flex items-center gap-1">
@@ -238,7 +202,7 @@ export const CurseCertificate: React.FC<CurseCertificateProps> = ({
             <div className="relative flex items-center justify-center">
               <div className="relative h-16 w-16 rounded-full bg-gradient-to-br from-red-600 via-inferno-600 to-red-900 p-1 shadow-[0_0_20px_rgba(220,38,38,0.7)] ring-2 ring-yellow-400/40 transform rotate-12">
                 <div className="flex h-full w-full items-center justify-center rounded-full border border-dashed border-yellow-200/50 bg-red-800 text-center">
-                  <div className="text-[9px] font-black uppercase tracking-tighter text-yellow-200 font-serif">
+                  <div className="text-[9px] font-black uppercase tracking-tighter text-yellow-200 font-heading">
                     <div>КАРМА</div>
                     <Flame className="w-3.5 h-3.5 mx-auto text-yellow-300" />
                     <div>666</div>
@@ -258,14 +222,13 @@ export const CurseCertificate: React.FC<CurseCertificateProps> = ({
 
       {/* Action Buttons Toolbar */}
       <div className="mt-6 flex flex-wrap items-center justify-center gap-3 max-w-lg px-4">
-        {/* Share to Telegram (Smart image/link) */}
+        {/* Direct Telegram Share */}
         <button
           onClick={handleShareTelegram}
-          disabled={isSharing}
-          className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-sky-600 to-sky-500 px-5 py-3 text-sm font-bold text-white shadow-[0_0_20px_rgba(14,165,233,0.4)] transition-all hover:scale-105 active:scale-95 disabled:opacity-50"
+          className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-sky-600 to-sky-500 px-5 py-3 text-sm font-bold text-white shadow-[0_0_20px_rgba(14,165,233,0.4)] transition-all hover:scale-105 active:scale-95"
         >
           <Send className="w-4 h-4" />
-          <span>{isSharing ? 'Подготовка...' : 'Отправить в Telegram'}</span>
+          <span>Отправить в Telegram</span>
         </button>
 
         {/* Download PNG Certificate */}

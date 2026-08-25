@@ -39,13 +39,12 @@ module.exports = {
         }
       },
       fontFamily: {
-        serif: ["var(--font-preciosa)", "Preciosa", "Georgia", "serif"],
-        accent: ["var(--font-preciosa)", "Preciosa", "serif"],
-        display: ["var(--font-preciosa)", "Preciosa", "serif"],
-        sans: ["var(--font-freeride)", "Freeride", "system-ui", "-apple-system", "sans-serif"],
-        body: ["var(--font-freeride)", "Freeride", "sans-serif"],
+        sans: ["Inter", "system-ui", "-apple-system", "sans-serif"],
+        heading: ["Unbounded", "Inter", "system-ui", "sans-serif"],
+        display: ["Unbounded", "Inter", "system-ui", "sans-serif"],
+        accent: ["Unbounded", "Inter", "system-ui", "sans-serif"],
+        serif: ["Unbounded", "Inter", "system-ui", "sans-serif"], // Fallback map for any legacy class
         mono: ['"JetBrains Mono"', "Courier New", "monospace"],
-        script: ['"Marck Script"', "cursive"],
       },
       boxShadow: {
         "glow-crimson": "0 0 25px rgba(255, 77, 40, 0.4)",

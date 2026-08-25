@@ -1,18 +1,5 @@
 import type { Metadata } from 'next';
-import localFont from 'next/font/local';
 import './globals.css';
-
-const accentFont = localFont({
-  src: '../fonts/cormorant_unicase.ttf',
-  variable: '--font-preciosa',
-  display: 'swap',
-});
-
-const freeride = localFont({
-  src: '../fonts/freeride.otf',
-  variable: '--font-freeride',
-  display: 'swap',
-});
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://proklinator-online.vercel.app'),
@@ -59,7 +46,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="ru" className={`dark scroll-smooth ${accentFont.variable} ${freeride.variable}`}>
+    <html lang="ru" className="dark scroll-smooth">
       <body className="min-h-screen bg-void-950 text-neutral-100 antialiased selection:bg-inferno-500 selection:text-white bg-noise font-sans">
         {children}
       </body>
