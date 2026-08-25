@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
- * Serverless Telegram Bot Notifier
- * Sends an anonymous decree directly to the Telegram user via Bot API.
+ * Serverless Telegram Bot Notifier using sendPhoto
+ * Sends the actual Certificate image + caption directly to the Telegram user.
  */
 export async function POST(req: NextRequest) {
   try {
@@ -10,7 +10,7 @@ export async function POST(req: NextRequest) {
     if (!token) {
       return NextResponse.json({
         success: false,
-        message: 'TELEGRAM_BOT_TOKEN не настроен в переменных окружения. Уведомление сохранено в реестре.',
+        message: 'TELEGRAM_BOT_TOKEN не настроен в переменных окружения.',
       });
     }
 
@@ -18,42 +18,49 @@ export async function POST(req: NextRequest) {
     const { chatId, username, realm, targetName, actionText, verdictTitle, verdictText, decreeId } = body;
 
     const isDark = realm === 'dark';
-    const webAppUrl = `https://proklinator-online.vercel.app?c_id=${decreeId}&realm=${realm}&name=${encodeURIComponent(targetName)}&sin=${encodeURIComponent(actionText)}&curse=${encodeURIComponent(verdictText)}&title=${encodeURIComponent(verdictTitle)}`;
+    const baseUrl = 'https://proklinator-online.vercel.app';
+    
+    // Direct URL to generated dynamic Certificate image
+    const photoUrl = `${baseUrl}/api/og?realm=${realm}&name=${encodeURIComponent(targetName)}&sin=${encodeURIComponent(actionText)}&curse=${encodeURIComponent(verdictText)}&title=${encodeURIComponent(verdictTitle)}&case=${encodeURIComponent('№ КРМ-' + (decreeId || '777').toUpperCase())}`;
 
-    const messageText = isDark
-      ? `⚡ <b>ВНИМАНИЕ! ТЕМНАЯ КАНЦЕЛЯРИЯ КАРМЫ ВЫНЕСЛА ПРИГОВОР</b>\n\n` +
+    // Clean caption under the photo
+    const caption = isDark
+      ? `⚖️ <b>ТЕМНАЯ КАНЦЕЛЯРИЯ КАРМЫ: ОФИЦИАЛЬНЫЙ ПРИГОВОР</b>\n\n` +
         `👤 <b>Субъект:</b> ${targetName}\n` +
         `📜 <b>Вменяемое деяние:</b> <i>«${actionText}»</i>\n\n` +
         `🩸 <b>Приговор:</b> <b>${verdictTitle}</b>\n` +
         `<i>«${verdictText}»</i>\n\n` +
-        `⚖️ <i>Печать астрального трибунала активна. Нажмите кнопку ниже, чтобы открыть официальную Грамоту или активировать Зеркальный Щит.</i>`
-      : `✨ <b>НЕБЕСНАЯ КАНЦЕЛЯРИЯ БЛАГОДАТИ НАПРАВИЛА ВАМ ЛУЧ ДОБРА</b>\n\n` +
+        `<i>Печать астрального трибунала активна.</i>`
+      : `✨ <b>НЕБЕСНАЯ КАНЦЕЛЯРИЯ БЛАГОДАТИ: ГРАМОТА ДОБРА</b>\n\n` +
         `👤 <b>Адресат:</b> ${targetName}\n` +
         `🌟 <b>Доброе деяние:</b> <i>«${actionText}»</i>\n\n` +
         `🕊️ <b>Благословение:</b> <b>${verdictTitle}</b>\n` +
         `<i>«${verdictText}»</i>\n\n` +
-        `✦ <i>Вам начислено +20 Кармоидов. Нажмите кнопку ниже, чтобы открыть сияющую Грамоту.</i>`;
+        `<i>Вам начислено +20 Кармоидов.</i>`;
 
-    // Send via Telegram Bot API
-    const tgRes = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+    const webAppUrl = `${baseUrl}/c/${decreeId || 'view'}`;
+
+    // Send actual Photo via Telegram Bot API
+    const tgRes = await fetch(`https://api.telegram.org/bot${token}/sendPhoto`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        chat_id: chatId || `@${username}`,
-        text: messageText,
+        chat_id: chatId || (username ? `@${username.replace(/^@/, '')}` : null),
+        photo: photoUrl,
+        caption: caption,
         parse_mode: 'HTML',
         reply_markup: {
           inline_keyboard: [
             [
               {
-                text: isDark ? '📜 Открыть Грамоту Проклятия' : '✨ Открыть Грамоту Благодати',
+                text: isDark ? '📜 Открыть Грамоту в Mini App' : '✨ Открыть Грамоту в Mini App',
                 web_app: { url: webAppUrl },
               },
             ],
             [
               {
-                text: isDark ? '🛡️ Активировать Зеркальный Щит' : '🪙 Забрать Кармоиды в лавке',
-                web_app: { url: 'https://proklinator-online.vercel.app' },
+                text: isDark ? '🛡️ Активировать Зеркальный Щит' : '🪙 Кармическая Лавка',
+                web_app: { url: baseUrl },
               },
             ],
           ],

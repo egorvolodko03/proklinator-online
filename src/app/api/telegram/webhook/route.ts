@@ -22,16 +22,19 @@ export async function POST(req: NextRequest) {
       if (message.text.startsWith('/start')) {
         const welcomeText =
           `⚖️ <b>Добро пожаловать в Кармическую Канцелярию, ${firstName}!</b>\n\n` +
-          `Здесь вершатся судьбы, накладываются шуточные микро-кары и ниспосылаются лучи астральной благодарности.\n\n` +
-          `🛡️ <i>Ваш профиль ${username ? '@' + username : ''} успешно подключен к канцелярии. Теперь вы можете получать анонимные проклятия, отражать их зеркальными щитами и благословлять друзей!</i>\n\n` +
+          `Здесь вершатся судьбы, накладываются шуточные микро-кары и ниспосылаются астральные благословения.\n\n` +
+          `🛡️ <i>Ваш профиль ${username ? '@' + username : ''} успешно подключен к канцелярии. Теперь вы можете получать анонимные грамоты в виде полноценных фото, отражать их щитами и благословлять друзей!</i>\n\n` +
           `Нажмите кнопку ниже, чтобы запустить приложение:`;
 
-        await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+        const bannerUrl = 'https://proklinator-online.vercel.app/api/og?realm=dark&name=' + encodeURIComponent(firstName) + '&sin=' + encodeURIComponent('Подключение к темной канцелярии') + '&curse=' + encodeURIComponent('Вам начислен бесплатный зеркальный щит от сглаза') + '&title=' + encodeURIComponent('Доступ в астрал открыт');
+
+        await fetch(`https://api.telegram.org/bot${token}/sendPhoto`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             chat_id: chatId,
-            text: welcomeText,
+            photo: bannerUrl,
+            caption: welcomeText,
             parse_mode: 'HTML',
             reply_markup: {
               inline_keyboard: [
