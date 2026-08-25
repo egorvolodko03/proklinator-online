@@ -2,39 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { DecreeVerdict, KarmaFeedItem, KarmaRealm } from '@/types';
 import { INITIAL_FEED } from '@/data/feed';
 
-// Shared global registry map for short URLs: id -> DecreeVerdict
+// Shared in-memory registry for short URLs: id -> DecreeVerdict
 const decreeRegistry = new Map<string, DecreeVerdict>();
 
-// Pre-fill initial feed
-INITIAL_FEED.forEach((item) => {
-  decreeRegistry.set(item.id, {
-    id: item.id,
-    realm: item.realm || 'dark',
-    caseNumber: `№ КРМ-${item.id.toUpperCase()}-Г`,
-    targetName: item.targetName,
-    telegramUsername: item.telegramUsername,
-    category: item.category,
-    actionText: item.sin,
-    verdictText: item.curseTitle,
-    verdictTitle: item.curseTitle,
-    tier: item.severity,
-    createdAt: 'Недавно',
-    clerkSignature: item.realm === 'light' ? 'Хранитель Благодати' : 'Архивариус Трибунала',
-    sealColor: item.realm === 'light' ? '#fbbf24' : '#ff4d28',
-  });
-});
-
-let globalCurses: KarmaFeedItem[] = Array.from(decreeRegistry.values()).map((v) => ({
-  id: v.id,
-  realm: v.realm,
-  targetName: v.targetName,
-  telegramUsername: v.telegramUsername,
-  category: v.category,
-  sin: v.actionText,
-  curseTitle: v.verdictTitle,
-  severity: v.tier as any,
-  timeAgo: 'Недавно',
-}));
+let globalCurses: KarmaFeedItem[] = [...INITIAL_FEED];
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
@@ -58,7 +29,7 @@ export async function GET(req: NextRequest) {
 
   return NextResponse.json({
     success: true,
-    totalCount: 1280 + globalCurses.length,
+    totalCount: globalCurses.length,
     realCount: globalCurses.length,
     stats: {
       dark: darkCount,
@@ -71,7 +42,20 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { id, realm, targetName, telegramUsername, category, sin, curseTitle, severity, verdictText, clerkSignature } = body;
+    const { 
+      id, 
+      realm, 
+      squadId,
+      targetName, 
+      telegramUsername, 
+      category, 
+      sin, 
+      curseTitle, 
+      severity, 
+      verdictText, 
+      clerkSignature, 
+      isGoldenSeal 
+    } = body;
 
     if (!targetName || !sin || !curseTitle) {
       return NextResponse.json({ success: false, error: 'Missing fields' }, { status: 400 });
@@ -81,7 +65,8 @@ export async function POST(req: NextRequest) {
     const newVerdict: DecreeVerdict = {
       id: decreeId,
       realm: (realm || 'dark') as KarmaRealm,
-      caseNumber: `№ КРМ-${decreeId.toUpperCase()}-Г`,
+      squadId,
+      caseNumber: `№ КРМ-${decreeId.toUpperCase().slice(0, 4)}-Г`,
       targetName,
       telegramUsername: telegramUsername || undefined,
       category: category || 'other',
@@ -89,21 +74,19 @@ export async function POST(req: NextRequest) {
       verdictText: verdictText || curseTitle,
       verdictTitle: curseTitle,
       tier: severity || 'medium',
-      createdAt: new Date().toLocaleDateString('ru-RU', {
-        day: '2-digit',
-        month: 'long',
-        year: 'numeric',
-      }),
+      createdAt: 'Только что',
       clerkSignature: clerkSignature || (realm === 'light' ? 'Хранитель Благодати' : 'Архивариус Трибунала'),
       sealColor: realm === 'light' ? '#fbbf24' : '#ff4d28',
+      isGoldenSeal: Boolean(isGoldenSeal),
     };
 
-    // Store in short link registry
+    // Store in registry for short link lookups
     decreeRegistry.set(decreeId, newVerdict);
 
     const newItem: KarmaFeedItem = {
       id: decreeId,
       realm: newVerdict.realm,
+      squadId: newVerdict.squadId,
       targetName: newVerdict.targetName,
       telegramUsername: newVerdict.telegramUsername,
       category: newVerdict.category,
@@ -113,7 +96,8 @@ export async function POST(req: NextRequest) {
       timeAgo: 'Только что',
     };
 
-    globalCurses = [newItem, ...globalCurses.slice(0, 59)];
+    // Keep real chronological list
+    globalCurses = [newItem, ...globalCurses.filter((c) => c.id !== decreeId).slice(0, 49)];
 
     return NextResponse.json({ success: true, verdict: newVerdict, id: decreeId });
   } catch {
