@@ -1,20 +1,22 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Volume2, VolumeX, Flame, Shield, Sparkles, Users, Gift, Coins } from 'lucide-react';
+import { Volume2, VolumeX, Flame, Shield, Sparkles, Users, Gift, Coins, Sun, UserCheck } from 'lucide-react';
 import { sound } from '@/lib/audio';
 import { triggerHaptic } from '@/lib/telegram';
 import { karmaStore } from '@/lib/karmaStore';
 import { CLERK_RANKS, getRankByExp } from '@/data/ranks';
-import { UserKarmaProfile } from '@/types';
+import { UserKarmaProfile, KarmaRealm } from '@/types';
 
 interface NavbarProps {
+  realm?: KarmaRealm;
   onOpenTipModal: () => void;
   onOpenSquadsModal: () => void;
   onOpenAltarModal: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
+  realm = 'dark',
   onOpenTipModal,
   onOpenSquadsModal,
   onOpenAltarModal,
@@ -23,7 +25,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   const [profile, setProfile] = useState<UserKarmaProfile>(() => karmaStore.getProfile());
 
   useEffect(() => {
-    setIsMuted(sound.getMuted());
+    setIsMuted(sound.getIsMuted());
     const unsub = karmaStore.subscribe(() => {
       setProfile(karmaStore.getProfile());
     });
@@ -31,6 +33,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   }, []);
 
   const currentRank = getRankByExp(profile.experience);
+  const isDark = realm === 'dark';
 
   const toggleSound = () => {
     const nextMute = sound.toggleMute();
@@ -42,29 +45,35 @@ export const Navbar: React.FC<NavbarProps> = ({
   };
 
   return (
-    <header className="sticky top-0 z-40 w-full border-b border-void-800 bg-void-950/80 backdrop-blur-xl transition-all">
-      <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-3 sm:px-6">
+    <header className="sticky top-0 z-40 w-full border-b border-void-800 bg-void-950/90 backdrop-blur-xl transition-all">
+      <div className="mx-auto flex h-14 sm:h-16 max-w-7xl items-center justify-between px-2.5 sm:px-6 gap-1.5">
         {/* Brand */}
-        <div className="flex items-center gap-2.5">
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-inferno-600 to-astral-600 shadow-glow-crimson ring-1 ring-white/10">
-            <Flame className="h-5 w-5 text-yellow-300 animate-pulse" />
+        <div className="flex items-center gap-1.5 sm:gap-2.5 min-w-0 shrink">
+          <div className={`flex h-8 w-8 sm:h-9 sm:w-9 shrink-0 items-center justify-center rounded-xl ring-1 ring-white/10 ${
+            isDark 
+              ? 'bg-gradient-to-br from-inferno-600 to-astral-600 shadow-glow-crimson'
+              : 'bg-gradient-to-br from-amber-400 to-emerald-400 shadow-glow-gold'
+          }`}>
+            {isDark ? (
+              <Flame className="h-4 w-4 sm:h-5 sm:w-5 text-yellow-300 animate-pulse" />
+            ) : (
+              <Sun className="h-4 w-4 sm:h-5 sm:w-5 text-void-950 animate-spin" style={{ animationDuration: '10s' }} />
+            )}
           </div>
-          <div>
-            <span className="font-heading text-sm sm:text-base font-black tracking-tight text-white uppercase">
-              Проклинатор <span className="text-karma-gold">онлайн</span>
-            </span>
-            <span className="hidden sm:inline-block ml-2 text-[10px] font-mono text-zinc-400 bg-void-800 px-1.5 py-0.5 rounded border border-void-700">
-              v3.0 Сквады & Алтарь
+          
+          <div className="truncate">
+            <span className="font-heading text-xs sm:text-base font-black tracking-tight text-white uppercase truncate block">
+              {isDark ? 'Проклинатор' : 'Благословитель'} <span className="text-karma-gold hidden xs:inline">онлайн</span>
             </span>
           </div>
         </div>
 
-        {/* Action Buttons Hub */}
-        <div className="flex items-center gap-1.5 sm:gap-2">
-          {/* Clerk Rank Level Badge */}
+        {/* Action Controls Hub (Compact for Mobile) */}
+        <div className="flex items-center gap-1 sm:gap-2 shrink-0">
+          {/* Clerk Rank Badge (Desktop only) */}
           <div
-            className={`hidden md:flex items-center gap-1.5 rounded-xl border px-2.5 py-1.5 text-xs font-mono font-semibold ${currentRank.badgeColor}`}
-            title={`Текущий ранг: ${currentRank.title} (${currentRank.perkDescription})`}
+            className={`hidden lg:flex items-center gap-1.5 rounded-xl border px-2.5 py-1 text-xs font-mono font-semibold ${currentRank.badgeColor}`}
+            title={`Ранг: ${currentRank.title}`}
           >
             <span>{currentRank.icon}</span>
             <span className="font-heading text-[11px]">{currentRank.title}</span>
@@ -77,9 +86,10 @@ export const Navbar: React.FC<NavbarProps> = ({
               triggerHaptic('light');
               onOpenSquadsModal();
             }}
-            className="flex items-center gap-1.5 rounded-xl border border-void-700 bg-void-900/90 px-3 py-1.5 text-xs font-bold text-zinc-200 shadow-sm transition-all hover:border-karma-gold hover:text-white active:scale-95 font-heading"
+            className="flex items-center gap-1 rounded-xl border border-void-700 bg-void-900/90 px-2 sm:px-3 py-1.5 text-xs font-bold text-zinc-200 shadow-sm transition-all hover:border-karma-gold hover:text-white active:scale-95 font-heading"
+            title="Офисные Сквады & Гильдии"
           >
-            <Users className="h-4 w-4 text-karma-gold" />
+            <Users className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-karma-gold" />
             <span className="hidden sm:inline">Сквады</span>
           </button>
 
@@ -90,37 +100,43 @@ export const Navbar: React.FC<NavbarProps> = ({
               triggerHaptic('light');
               onOpenAltarModal();
             }}
-            className="flex items-center gap-1.5 rounded-xl border border-amber-500/40 bg-amber-500/10 px-3 py-1.5 text-xs font-bold text-amber-300 shadow-glow-gold transition-all hover:bg-amber-500/20 hover:scale-105 active:scale-95 font-heading"
+            className="flex items-center gap-1 rounded-xl border border-amber-500/40 bg-amber-500/15 px-2 sm:px-3 py-1.5 text-xs font-bold text-amber-300 shadow-glow-gold transition-all hover:bg-amber-500/25 active:scale-95 font-heading"
+            title="Рулетка Алтаря & Ежедневные Награды"
           >
-            <Gift className="h-4 w-4 text-amber-300 animate-bounce" />
-            <span>Алтарь</span>
+            <Gift className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-amber-300 animate-bounce" />
+            <span className="hidden sm:inline">Алтарь</span>
           </button>
 
-          {/* Shop / Shield & Coins Button */}
+          {/* Coins & Shields Button */}
           <button
             onClick={() => {
               sound.playClick();
               triggerHaptic('light');
               onOpenTipModal();
             }}
-            className="flex items-center gap-1.5 rounded-xl border border-void-700 bg-void-900/90 px-3 py-1.5 text-xs font-bold text-zinc-200 shadow-sm transition-all hover:border-astral-500 hover:text-white active:scale-95 font-heading"
+            className="flex items-center gap-1 rounded-xl border border-void-700 bg-void-900/90 px-2 sm:px-3 py-1.5 text-xs font-bold text-zinc-200 shadow-sm transition-all hover:border-astral-500 hover:text-white active:scale-95 font-heading"
+            title="Кармическая Лавка & Защитные Щиты"
           >
-            <Coins className="h-4 w-4 text-karma-gold" />
-            <span className="text-karma-gold font-mono">{profile.coins}</span>
+            <Coins className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-karma-gold" />
+            <span className="text-karma-gold font-mono text-xs sm:text-sm">{profile.coins}</span>
             {profile.activeShields > 0 && (
-              <span className="flex items-center gap-0.5 text-[10px] text-emerald-400 bg-emerald-500/20 px-1.5 py-0.5 rounded font-mono">
+              <span className="hidden xs:flex items-center gap-0.5 text-[9px] sm:text-[10px] text-emerald-400 bg-emerald-500/20 px-1 py-0.2 rounded font-mono">
                 <Shield className="w-2.5 h-2.5" /> {profile.activeShields}
               </span>
             )}
           </button>
 
-          {/* Sound Toggle */}
+          {/* Sound Toggle Button */}
           <button
             onClick={toggleSound}
-            className="flex h-9 w-9 items-center justify-center rounded-xl border border-void-800 bg-void-900 text-zinc-400 transition-colors hover:border-void-700 hover:text-zinc-100"
+            className="flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-xl border border-void-800 bg-void-900 text-zinc-400 transition-colors hover:border-void-700 hover:text-zinc-100 shrink-0"
             title={isMuted ? 'Включить звук' : 'Выключить звук'}
           >
-            {isMuted ? <VolumeX className="h-4 w-4 text-zinc-600" /> : <Volume2 className="h-4 w-4 text-zinc-300" />}
+            {isMuted ? (
+              <VolumeX className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-zinc-600" />
+            ) : (
+              <Volume2 className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-zinc-300" />
+            )}
           </button>
         </div>
       </div>

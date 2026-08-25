@@ -1,11 +1,20 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
+import Script from 'next/script';
 import './globals.css';
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  viewportFit: 'cover',
+};
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://proklinator-online.vercel.app'),
   title: 'Проклинатор онлайн — Темная Канцелярия Космической Кармы',
   description:
-    'Одно действие — и вы счастливы. Направьте безжалостную космическую бюрократию и абсурдные микро-кары на обидчика.',
+    'Одно действие — и вы счастливы. Направьте безжалостную космическую бюрократию и шуточные микро-кары на обидчика.',
   keywords: [
     'проклинатор',
     'проклинатор онлайн',
@@ -15,6 +24,7 @@ export const metadata: Metadata = {
     'темная канцелярия',
     'юмор',
     'грамота проклятия',
+    'благословитель',
   ],
   authors: [{ name: 'Темная Канцелярия Карма-Контроля' }],
   openGraph: {
@@ -47,7 +57,14 @@ export default function RootLayout({
 }) {
   return (
     <html lang="ru" className="dark scroll-smooth">
-      <body className="min-h-screen bg-void-950 text-neutral-100 antialiased selection:bg-inferno-500 selection:text-white bg-noise font-sans">
+      <head>
+        {/* Official Telegram Mini App SDK */}
+        <Script
+          src="https://telegram.org/js/telegram-web-app.js"
+          strategy="beforeInteractive"
+        />
+      </head>
+      <body className="min-h-screen bg-void-950 text-neutral-100 antialiased selection:bg-inferno-500 selection:text-white bg-noise font-sans overflow-x-hidden">
         {children}
       </body>
     </html>

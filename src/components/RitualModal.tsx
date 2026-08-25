@@ -15,9 +15,10 @@ import {
   Check, 
   AlertCircle,
   Users,
-  Link,
+  ChevronDown,
   AtSign,
-  ShieldCheck
+  UserCheck,
+  UserPlus
 } from 'lucide-react';
 import { Category, Curse, Blessing, DecreeVerdict, KarmaRealm, SeverityLevel, BlessingLevel, Squad, SquadMember } from '@/types';
 import { CATEGORY_LABELS, CLERKS, generateCaseNumber, formatDate } from '@/lib/utils';
@@ -68,15 +69,12 @@ export const RitualModal: React.FC<RitualModalProps> = ({
   // Wizard step: 1: Target, 2: Reason, 3: Verdict, 4: Processing, 5: Certificate
   const [step, setStep] = useState<1 | 2 | 3 | 4 | 5>(1);
 
-  // Delivery mode: 'squad' (100% anonymous inside guild) or 'direct' (link with sender invitation)
-  const [deliveryMode, setDeliveryMode] = useState<'squad' | 'direct'>(
-    preselectedMember ? 'squad' : 'direct'
-  );
-
   const [squads, setSquads] = useState<Squad[]>(() => squadStore.getSquads());
   const [selectedSquad, setSelectedSquad] = useState<Squad | null>(
     preselectedSquad || squads[0] || null
   );
+
+  const [isSquadDropdownOpen, setIsSquadDropdownOpen] = useState(false);
 
   // Form state
   const [targetName, setTargetName] = useState(preselectedMember?.name || '');
@@ -100,15 +98,23 @@ export const RitualModal: React.FC<RitualModalProps> = ({
     if (preselectedMember) {
       setTargetName(preselectedMember.name);
       setTelegramUsername(preselectedMember.username || '');
-      setDeliveryMode('squad');
     }
   }, [preselectedMember]);
 
   if (!isOpen) return null;
 
+  const handleSelectMember = (member: SquadMember) => {
+    sound.playClick();
+    triggerHaptic('light');
+    setTargetName(member.name);
+    setTelegramUsername(member.username || '');
+    setIsSquadDropdownOpen(false);
+    if (errorMsg) setErrorMsg('');
+  };
+
   const handleNextFromStep1 = () => {
     if (!targetName.trim()) {
-      setErrorMsg('Укажите имя или выберите коллегу из сквада!');
+      setErrorMsg('Укажите имя или выберите коллегу из выпадающего списка!');
       sound.playClick();
       triggerHaptic('error');
       return;
@@ -129,7 +135,7 @@ export const RitualModal: React.FC<RitualModalProps> = ({
 
   const handleNextFromStep2 = () => {
     if (!reasonText.trim()) {
-      setErrorMsg(isDark ? 'Опишите грех обидчика!' : 'Опишите доброе деяние человека!');
+      setErrorMsg(isDark ? 'Опишите деяние для протокола!' : 'Опишите добрый поступок!');
       sound.playClick();
       triggerHaptic('error');
       return;
@@ -177,7 +183,7 @@ export const RitualModal: React.FC<RitualModalProps> = ({
     const newVerdict: DecreeVerdict = {
       id: Math.random().toString(36).substring(2, 10),
       realm,
-      squadId: deliveryMode === 'squad' ? selectedSquad?.id : undefined,
+      squadId: selectedSquad?.id,
       caseNumber: generateCaseNumber(),
       targetName: targetName.trim(),
       telegramUsername: telegramUsername.trim().replace(/^@/, '') || undefined,
@@ -212,17 +218,15 @@ export const RitualModal: React.FC<RitualModalProps> = ({
           verdictText: newVerdict.verdictText,
           clerkSignature: newVerdict.clerkSignature,
         }),
-      }).catch((e) => console.log('Background save error:', e));
+      }).catch((e) => console.log('Save error:', e));
     } catch {
       // ignore
     }
 
-    // If squad delivery, record inside squad
-    if (deliveryMode === 'squad' && selectedSquad) {
+    if (selectedSquad) {
       squadStore.recordSquadDecree(selectedSquad.id, targetName, realm);
     }
 
-    // Award user coins & experience
     karmaStore.recordDecreeSent(realm);
   };
 
@@ -246,7 +250,7 @@ export const RitualModal: React.FC<RitualModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 overflow-y-auto bg-black/80 backdrop-blur-md">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-2.5 sm:p-6 overflow-y-auto bg-black/80 backdrop-blur-md">
       <motion.div
         initial={{ opacity: 0, scale: 0.95, y: 15 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -256,7 +260,7 @@ export const RitualModal: React.FC<RitualModalProps> = ({
         }`}
       >
         {/* Top Header */}
-        <div className="flex items-center justify-between border-b border-void-800 px-6 py-4">
+        <div className="flex items-center justify-between border-b border-void-800 px-5 sm:px-6 py-3.5 sm:py-4">
           <div className="flex items-center gap-2">
             {isDark ? <Flame className="w-5 h-5 text-inferno-400" /> : <Sun className="w-5 h-5 text-amber-300" />}
             <span className="font-heading text-sm sm:text-base font-bold text-zinc-100">
@@ -281,10 +285,10 @@ export const RitualModal: React.FC<RitualModalProps> = ({
 
         {/* Stepper Progress */}
         {step <= 3 && (
-          <div className="border-b border-void-800 bg-void-900/40 px-6 py-3">
-            <div className="flex items-center justify-between text-xs font-semibold">
+          <div className="border-b border-void-800 bg-void-900/40 px-5 sm:px-6 py-2.5 sm:py-3">
+            <div className="flex items-center justify-between text-[11px] sm:text-xs font-semibold">
               <span className={step >= 1 ? (isDark ? 'text-inferno-400' : 'text-amber-300') : 'text-zinc-500'}>
-                1. Адресат & Канал
+                1. Адресат
               </span>
               <span className="text-zinc-600">→</span>
               <span className={step >= 2 ? (isDark ? 'text-inferno-400' : 'text-amber-300') : 'text-zinc-500'}>
@@ -311,7 +315,7 @@ export const RitualModal: React.FC<RitualModalProps> = ({
         )}
 
         {/* Step Content */}
-        <div className="p-6">
+        <div className="p-4 sm:p-6">
           {errorMsg && (
             <motion.div
               initial={{ opacity: 0, y: -5 }}
@@ -324,7 +328,7 @@ export const RitualModal: React.FC<RitualModalProps> = ({
           )}
 
           <AnimatePresence mode="wait">
-            {/* STEP 1: TARGET & 2-STAGE DELIVERY CHANNEL */}
+            {/* STEP 1: TARGET WITH SQUAD DROPDOWN */}
             {step === 1 && (
               <motion.div
                 key="step1"
@@ -332,121 +336,118 @@ export const RitualModal: React.FC<RitualModalProps> = ({
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -20 }}
                 transition={{ duration: 0.25 }}
-                className="space-y-5"
+                className="space-y-4"
               >
-                {/* 2-Stage Verification Channel Toggle */}
-                <div>
-                  <label className="block text-xs font-semibold text-zinc-300 uppercase tracking-wider mb-2 font-mono">
-                    Канал отправки вердикта:
-                  </label>
-                  <div className="grid grid-cols-2 gap-2.5">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        sound.playClick();
-                        setDeliveryMode('squad');
-                      }}
-                      className={`flex flex-col items-start p-3 rounded-2xl border text-left transition-all ${
-                        deliveryMode === 'squad'
-                          ? 'border-karma-gold bg-karma-gold/15 shadow-glow-gold'
-                          : 'border-void-800 bg-void-900/80 text-zinc-400 hover:border-void-700'
-                      }`}
-                    >
-                      <div className="flex items-center gap-1.5 font-heading text-xs font-bold text-white mb-1">
-                        <Users className="w-4 h-4 text-karma-gold" />
-                        <span>Внутри Сквада</span>
-                      </div>
-                      <span className="text-[10px] text-zinc-400 font-sans leading-tight">
-                        100% Анонимно проверенному коллеге из офиса
+                {/* Squad Members Quick Dropdown Selector */}
+                {selectedSquad && (
+                  <div className="relative">
+                    <label className="block text-[11px] sm:text-xs font-semibold text-zinc-300 uppercase tracking-wider mb-1.5 font-mono flex items-center justify-between">
+                      <span className="flex items-center gap-1.5">
+                        <Users className="w-3.5 h-3.5 text-karma-gold" />
+                        <span>Выбрать из сквада «{selectedSquad.name}»:</span>
                       </span>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => {
-                        sound.playClick();
-                        setDeliveryMode('direct');
-                      }}
-                      className={`flex flex-col items-start p-3 rounded-2xl border text-left transition-all ${
-                        deliveryMode === 'direct'
-                          ? 'border-karma-gold bg-karma-gold/15 shadow-glow-gold'
-                          : 'border-void-800 bg-void-900/80 text-zinc-400 hover:border-void-700'
-                      }`}
-                    >
-                      <div className="flex items-center gap-1.5 font-heading text-xs font-bold text-white mb-1">
-                        <Link className="w-4 h-4 text-sky-400" />
-                        <span>Прямая ссылка другу</span>
-                      </div>
-                      <span className="text-[10px] text-zinc-400 font-sans leading-tight">
-                        Персональный шеринг в Telegram без спама
-                      </span>
-                    </button>
-                  </div>
-                </div>
-
-                {/* If SQUAD mode: Member Selection from Squad */}
-                {deliveryMode === 'squad' && selectedSquad && (
-                  <div>
-                    <label className="block text-xs font-semibold text-zinc-300 uppercase tracking-wider mb-2 font-mono flex items-center justify-between">
-                      <span>Выберите коллегу из «{selectedSquad.name}»:</span>
                       <span className="text-[10px] text-karma-gold font-sans font-normal">🔒 Анонимно</span>
                     </label>
-                    <div className="flex flex-wrap gap-2 max-h-36 overflow-y-auto pr-1">
-                      {selectedSquad.members.map((m) => {
-                        const isSelected = targetName === m.name;
-                        return (
-                          <button
-                            key={m.id}
-                            type="button"
-                            onClick={() => {
-                              sound.playClick();
-                              setTargetName(m.name);
-                              setTelegramUsername(m.username || '');
-                              if (errorMsg) setErrorMsg('');
-                            }}
-                            className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-xs font-semibold transition-all ${
-                              isSelected
-                                ? 'border-inferno-500 bg-inferno-500/20 text-white shadow-glow-crimson'
-                                : 'border-void-800 bg-void-900 text-zinc-300 hover:border-void-700'
-                            }`}
-                          >
-                            <span>{m.avatar}</span>
-                            <span>{m.name}</span>
-                          </button>
-                        );
-                      })}
+
+                    <div className="relative">
+                      <button
+                        type="button"
+                        onClick={() => setIsSquadDropdownOpen(!isSquadDropdownOpen)}
+                        className="w-full flex items-center justify-between rounded-xl border border-void-700 bg-void-900 px-3.5 py-3 text-xs sm:text-sm text-zinc-200 hover:border-karma-gold transition-all font-sans"
+                      >
+                        <span className="flex items-center gap-2 truncate">
+                          {targetName ? (
+                            <>
+                              <UserCheck className="w-4 h-4 text-emerald-400 shrink-0" />
+                              <span className="font-semibold text-white truncate">Выбран: {targetName}</span>
+                              {telegramUsername && (
+                                <span className="text-zinc-500 font-mono text-xs">(@{telegramUsername})</span>
+                              )}
+                            </>
+                          ) : (
+                            <>
+                              <Users className="w-4 h-4 text-zinc-400 shrink-0" />
+                              <span className="text-zinc-400">Нажмите, чтобы выбрать коллегу/друга из списка...</span>
+                            </>
+                          )}
+                        </span>
+                        <ChevronDown className={`w-4 h-4 text-zinc-400 shrink-0 transition-transform ${isSquadDropdownOpen ? 'rotate-180' : ''}`} />
+                      </button>
+
+                      {/* Dropdown Menu */}
+                      {isSquadDropdownOpen && (
+                        <div className="absolute top-full left-0 right-0 z-30 mt-1.5 max-h-52 overflow-y-auto rounded-2xl border border-karma-gold/40 bg-void-900/95 p-2 shadow-2xl backdrop-blur-xl">
+                          {selectedSquad.members.map((m) => (
+                            <button
+                              key={m.id}
+                              type="button"
+                              onClick={() => handleSelectMember(m)}
+                              className="w-full flex items-center justify-between rounded-xl p-2.5 hover:bg-karma-gold/15 hover:text-white transition-colors text-left"
+                            >
+                              <div className="flex items-center gap-2.5 truncate">
+                                <span className="text-xl shrink-0">{m.avatar}</span>
+                                <div className="truncate">
+                                  <div className="font-heading text-xs font-bold text-white truncate">{m.name}</div>
+                                  {m.username && (
+                                    <div className="text-[10px] text-zinc-400 font-mono">@{m.username}</div>
+                                  )}
+                                </div>
+                              </div>
+                              <span className="text-[10px] text-zinc-500 font-mono shrink-0">
+                                🔥 {m.sinsCount} | ✨ {m.blessingsCount}
+                              </span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}
 
-                {/* If DIRECT mode: Manual Name Input */}
-                {deliveryMode === 'direct' && (
-                  <div>
-                    <label className="block text-xs font-semibold text-zinc-300 uppercase tracking-wider mb-2 font-mono">
-                      Имя / Псевдоним адресата:
-                    </label>
+                {/* Direct Name Input */}
+                <div>
+                  <label className="block text-[11px] sm:text-xs font-semibold text-zinc-300 uppercase tracking-wider mb-1.5 font-mono">
+                    Или введите имя вручную:
+                  </label>
+                  <input
+                    type="text"
+                    value={targetName}
+                    onChange={(e) => {
+                      setTargetName(e.target.value);
+                      if (errorMsg) setErrorMsg('');
+                    }}
+                    onKeyDown={(e) => e.key === 'Enter' && handleNextFromStep1()}
+                    placeholder="Например: Марина из бухгалтерии, Сосед с 44-й кв., Егор..."
+                    maxLength={60}
+                    className="w-full rounded-xl border border-void-700 bg-void-900 px-3.5 py-3 text-sm text-white placeholder-zinc-500 focus:border-karma-gold focus:outline-none transition-all font-sans"
+                  />
+                </div>
+
+                {/* Telegram Username (Optional) */}
+                <div>
+                  <label className="block text-[11px] sm:text-xs font-semibold text-zinc-300 uppercase tracking-wider mb-1.5 font-mono flex items-center justify-between">
+                    <span>Telegram @username (для отправки фото в бота):</span>
+                    <span className="text-[10px] text-zinc-500 font-sans">опционально</span>
+                  </label>
+                  <div className="relative">
+                    <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-500 font-mono text-sm">@</span>
                     <input
                       type="text"
-                      value={targetName}
-                      onChange={(e) => {
-                        setTargetName(e.target.value);
-                        if (errorMsg) setErrorMsg('');
-                      }}
-                      onKeyDown={(e) => e.key === 'Enter' && handleNextFromStep1()}
-                      placeholder="Например: Марина из бухгалтерии, Сосед с 44-й кв., Друг..."
-                      maxLength={60}
-                      autoFocus
-                      className="w-full rounded-xl border border-void-700 bg-void-900 px-4 py-3.5 text-sm text-white placeholder-zinc-500 focus:border-karma-gold focus:outline-none transition-all font-sans"
+                      value={telegramUsername}
+                      onChange={(e) => setTelegramUsername(e.target.value.replace(/^@/, ''))}
+                      placeholder="username (без @)"
+                      maxLength={32}
+                      className="w-full rounded-xl border border-void-700 bg-void-900 pl-8 pr-3.5 py-2.5 text-sm text-white placeholder-zinc-500 focus:border-karma-gold focus:outline-none transition-all font-mono"
                     />
                   </div>
-                )}
+                </div>
 
                 {/* Category Chips */}
                 <div>
-                  <label className="block text-xs font-semibold text-zinc-300 uppercase tracking-wider mb-2 font-mono">
+                  <label className="block text-[11px] sm:text-xs font-semibold text-zinc-300 uppercase tracking-wider mb-1.5 font-mono">
                     Категория:
                   </label>
-                  <div className="flex flex-wrap gap-2">
+                  <div className="flex flex-wrap gap-1.5 sm:gap-2">
                     {CATEGORIES.map((cat) => {
                       const item = CATEGORY_LABELS[cat];
                       const isSelected = category === cat;
@@ -458,7 +459,7 @@ export const RitualModal: React.FC<RitualModalProps> = ({
                             sound.playClick();
                             setCategory(cat);
                           }}
-                          className={`flex items-center gap-1.5 rounded-xl border px-3 py-2 text-xs font-semibold transition-all ${
+                          className={`flex items-center gap-1.5 rounded-xl border px-2.5 sm:px-3 py-1.5 text-xs font-semibold transition-all ${
                             isSelected
                               ? isDark
                                 ? 'border-inferno-500 bg-inferno-500/15 text-inferno-300 shadow-glow-crimson'
@@ -474,17 +475,17 @@ export const RitualModal: React.FC<RitualModalProps> = ({
                   </div>
                 </div>
 
-                {/* Step 1 Actions */}
+                {/* Step 1 Next Button */}
                 <div className="pt-2 flex justify-end">
                   <button
                     onClick={handleNextFromStep1}
-                    className={`flex items-center gap-2 rounded-xl px-6 py-3 text-sm font-bold text-white transition-all font-heading hover:scale-105 active:scale-95 ${
+                    className={`w-full sm:w-auto flex items-center justify-center gap-2 rounded-xl px-6 py-3 text-sm font-bold text-white transition-all font-heading hover:scale-105 active:scale-95 ${
                       isDark
                         ? 'bg-gradient-to-r from-inferno-600 to-inferno-500 shadow-glow-crimson'
                         : 'bg-gradient-to-r from-amber-500 to-emerald-500 shadow-glow-gold text-void-950'
                     }`}
                   >
-                    <span>Далее: {isDark ? 'Зафиксировать грех' : 'Указать доброе дело'}</span>
+                    <span>Далее: {isDark ? 'Указать грех' : 'Указать доброе дело'}</span>
                     <ArrowRight className="w-4 h-4" />
                   </button>
                 </div>
@@ -499,29 +500,25 @@ export const RitualModal: React.FC<RitualModalProps> = ({
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -20 }}
                 transition={{ duration: 0.25 }}
-                className="space-y-5"
+                className="space-y-4"
               >
                 <div className="flex items-center justify-between">
                   <div>
-                    <h3 className="font-heading text-lg sm:text-xl font-bold text-white flex items-center gap-2">
-                      <FileText className={`w-5 h-5 ${isDark ? 'text-inferno-400' : 'text-amber-300'}`} />
+                    <h3 className="font-heading text-base sm:text-lg font-bold text-white flex items-center gap-2">
+                      <FileText className={`w-4 h-4 sm:w-5 sm:h-5 ${isDark ? 'text-inferno-400' : 'text-amber-300'}`} />
                       {isDark ? 'Что он(а) натворил(а)?' : 'За что благодарим?'}
                     </h3>
-                    <p className="mt-1 text-xs text-zinc-400 font-sans">
-                      {isDark ? 'Сформулируйте суть деяния для протокола.' : 'Опишите добрый поступок или приятный момент.'}
-                    </p>
                   </div>
 
                   <button
                     onClick={handleRollRandomReason}
-                    className="flex items-center gap-1.5 rounded-xl border border-void-700 bg-void-900 px-3 py-2 text-xs font-semibold text-astral-400 hover:border-astral-500 hover:bg-void-850 active:scale-95 transition-all"
+                    className="flex items-center gap-1.5 rounded-xl border border-void-700 bg-void-900 px-2.5 py-1.5 text-xs font-semibold text-astral-400 hover:border-astral-500 hover:bg-void-850 active:scale-95 transition-all"
                   >
-                    <Dices className="w-4 h-4" />
+                    <Dices className="w-3.5 h-3.5" />
                     <span>Случайный вариант</span>
                   </button>
                 </div>
 
-                {/* Reason Textarea */}
                 <div>
                   <textarea
                     value={reasonText}
@@ -529,24 +526,23 @@ export const RitualModal: React.FC<RitualModalProps> = ({
                       setReasonText(e.target.value);
                       if (errorMsg) setErrorMsg('');
                     }}
-                    placeholder={isDark ? 'Например: Игнорит в почте 2 недели...' : 'Например: Скинул правки без правок и угостил кофе...'}
+                    placeholder={isDark ? 'Например: Греет минтай с луком в офисной микроволновке...' : 'Например: Прикрыл на созвоне перед генеральным...'}
                     rows={3}
                     maxLength={180}
-                    className="w-full rounded-xl border border-void-700 bg-void-900 p-4 text-sm text-white placeholder-zinc-500 focus:border-karma-gold focus:outline-none transition-all resize-none font-sans"
+                    className="w-full rounded-xl border border-void-700 bg-void-900 p-3.5 text-sm text-white placeholder-zinc-500 focus:border-karma-gold focus:outline-none transition-all resize-none font-sans"
                   />
-                  <div className="mt-1 text-right text-[11px] text-zinc-500 font-mono">
+                  <div className="mt-1 text-right text-[10px] text-zinc-500 font-mono">
                     {reasonText.length}/180 символов
                   </div>
                 </div>
 
-                {/* Step 2 Actions */}
                 <div className="pt-2 flex items-center justify-between">
                   <button
                     onClick={() => {
                       sound.playClick();
                       setStep(1);
                     }}
-                    className="flex items-center gap-1.5 rounded-xl border border-void-700 bg-void-900 px-4 py-3 text-xs font-semibold text-zinc-400 hover:text-white"
+                    className="flex items-center gap-1.5 rounded-xl border border-void-700 bg-void-900 px-3.5 py-2.5 text-xs font-semibold text-zinc-400 hover:text-white"
                   >
                     <ArrowLeft className="w-4 h-4" />
                     <span>Назад</span>
@@ -554,7 +550,7 @@ export const RitualModal: React.FC<RitualModalProps> = ({
 
                   <button
                     onClick={handleNextFromStep2}
-                    className={`flex items-center gap-2 rounded-xl px-6 py-3 text-sm font-bold transition-all font-heading hover:scale-105 active:scale-95 ${
+                    className={`flex items-center gap-2 rounded-xl px-5 py-2.5 text-xs sm:text-sm font-bold transition-all font-heading hover:scale-105 active:scale-95 ${
                       isDark
                         ? 'bg-gradient-to-r from-inferno-600 to-inferno-500 text-white shadow-glow-crimson'
                         : 'bg-gradient-to-r from-amber-500 to-emerald-500 text-void-950 shadow-glow-gold'
@@ -575,16 +571,15 @@ export const RitualModal: React.FC<RitualModalProps> = ({
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -20 }}
                 transition={{ duration: 0.25 }}
-                className="space-y-5"
+                className="space-y-4"
               >
                 <div>
-                  <h3 className="font-heading text-lg sm:text-xl font-bold text-white flex items-center gap-2">
-                    <Sparkles className={`w-5 h-5 ${isDark ? 'text-karma-gold' : 'text-amber-300'}`} />
+                  <h3 className="font-heading text-base sm:text-lg font-bold text-white flex items-center gap-2">
+                    <Sparkles className={`w-4 h-4 sm:w-5 sm:h-5 ${isDark ? 'text-karma-gold' : 'text-amber-300'}`} />
                     {isDark ? 'Какую кару определим?' : 'Какое благословение ниспошлем?'}
                   </h3>
                 </div>
 
-                {/* Selected Item Box */}
                 <div className="rounded-2xl border border-void-700 bg-void-900 p-4 relative overflow-hidden">
                   <div className="flex items-center justify-between mb-2">
                     <span className={`text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 font-heading ${
@@ -635,14 +630,13 @@ export const RitualModal: React.FC<RitualModalProps> = ({
                   </div>
                 </div>
 
-                {/* Step 3 Actions */}
                 <div className="pt-2 flex items-center justify-between">
                   <button
                     onClick={() => {
                       sound.playClick();
                       setStep(2);
                     }}
-                    className="flex items-center gap-1.5 rounded-xl border border-void-700 bg-void-900 px-4 py-3 text-xs font-semibold text-zinc-400 hover:text-white"
+                    className="flex items-center gap-1.5 rounded-xl border border-void-700 bg-void-900 px-3.5 py-2.5 text-xs font-semibold text-zinc-400 hover:text-white"
                   >
                     <ArrowLeft className="w-4 h-4" />
                     <span>Назад</span>
@@ -650,14 +644,14 @@ export const RitualModal: React.FC<RitualModalProps> = ({
 
                   <button
                     onClick={handleStartRitual}
-                    className={`flex items-center gap-2 rounded-xl px-7 py-3 text-sm font-bold transition-all font-heading hover:scale-105 active:scale-95 ${
+                    className={`flex items-center gap-2 rounded-xl px-6 py-2.5 text-xs sm:text-sm font-bold transition-all font-heading hover:scale-105 active:scale-95 ${
                       isDark
                         ? 'bg-gradient-to-r from-inferno-600 via-inferno-500 to-astral-600 text-white shadow-glow-crimson'
                         : 'bg-gradient-to-r from-amber-400 via-emerald-400 to-sky-400 text-void-950 shadow-glow-gold'
                     }`}
                   >
                     {isDark ? <Flame className="w-4 h-4 text-yellow-300" /> : <Sun className="w-4 h-4" />}
-                    <span>{isDark ? 'Наложить печать канцелярии' : 'Утвердить печать благодати'}</span>
+                    <span>{isDark ? 'Утвердить печать' : 'Утвердить благодать'}</span>
                   </button>
                 </div>
               </motion.div>

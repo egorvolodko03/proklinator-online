@@ -9,6 +9,7 @@ import { RealmSelector } from '@/components/RealmSelector';
 import { RitualModal } from '@/components/RitualModal';
 import { CurseCertificate } from '@/components/CurseCertificate';
 import { KarmaDashboard } from '@/components/KarmaDashboard';
+import { SquadsSection } from '@/components/SquadsSection';
 import { TipModal } from '@/components/TipModal';
 import { SquadsModal } from '@/components/SquadsModal';
 import { AltarRouletteModal } from '@/components/AltarRouletteModal';
@@ -46,7 +47,7 @@ function AppContent() {
   useEffect(() => {
     initTelegramMiniApp();
 
-    // Check for join_squad
+    // Check for join_squad in URL
     const joinSquadCode = searchParams.get('join_squad');
     if (joinSquadCode) {
       const res = squadStore.joinSquadByCode(joinSquadCode, 'Вы', '🧙');
@@ -62,7 +63,7 @@ function AppContent() {
     const curse = searchParams.get('curse');
     const sin = searchParams.get('sin');
     const title = searchParams.get('title');
-    const cat = searchParams.get('cat') as Category || 'other';
+    const cat = (searchParams.get('cat') as Category) || 'other';
     const sharedRealm = (searchParams.get('realm') as KarmaRealm) || 'dark';
 
     if (cId && name && curse && sin) {
@@ -105,13 +106,14 @@ function AppContent() {
 
       {/* Navbar */}
       <Navbar
+        realm={realm}
         onOpenTipModal={() => setIsTipOpen(true)}
         onOpenSquadsModal={() => setIsSquadsOpen(true)}
         onOpenAltarModal={() => setIsAltarOpen(true)}
       />
 
       {/* Main Content */}
-      <main className="mx-auto max-w-7xl px-3 sm:px-6 py-6 sm:py-10 space-y-12">
+      <main className="mx-auto max-w-7xl px-2.5 sm:px-6 py-4 sm:py-8 space-y-8 sm:space-y-12">
         {/* Hero Section */}
         <Hero
           onStartRitual={() => handleStartRitual('dark')}
@@ -124,13 +126,20 @@ function AppContent() {
         {/* Realm Mode Toggle */}
         <RealmSelector activeRealm={realm} onSelectRealm={setRealm} />
 
+        {/* Squads & Guilds Hub Section */}
+        <SquadsSection
+          onOpenSquadsModal={() => setIsSquadsOpen(true)}
+          onTargetMember={handleTargetSquadMember}
+          onShowToast={addToast}
+        />
+
         {/* Real-Time Karma Dashboard */}
         <KarmaDashboard onSelectDecree={setViewingVerdict} />
       </main>
 
       {/* Footer */}
-      <footer className="mt-20 border-t border-void-800 bg-void-950/80 py-8 text-center text-xs text-zinc-500 font-mono">
-        <p>© 2026 Кармическая Канцелярия 3.0 • Все права защищены астральным судом.</p>
+      <footer className="mt-16 border-t border-void-800 bg-void-950/90 py-6 text-center text-xs text-zinc-500 font-mono px-4">
+        <p>© 2026 Кармическая Канцелярия 3.0 • Все права защищены астральным трибуналом.</p>
         <p className="mt-1 text-[11px] text-zinc-600">
           Сайт создан исключительно в шуточных и развлекательных целях. Никакой реальной магии.
         </p>
@@ -171,7 +180,7 @@ function AppContent() {
 
       {/* Shared Verdict Viewer Modal */}
       {viewingVerdict && !isRitualOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/80 backdrop-blur-md overflow-y-auto">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-2.5 sm:p-6 bg-black/80 backdrop-blur-md overflow-y-auto">
           <div className="relative w-full max-w-2xl">
             <button
               onClick={() => setViewingVerdict(null)}

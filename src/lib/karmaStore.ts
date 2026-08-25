@@ -1,5 +1,6 @@
 import { ShopArtifact, UserKarmaProfile, GachaPrize } from '@/types';
 import { getRankByExp } from '@/data/ranks';
+import { getTelegramUser, TelegramUser } from '@/lib/telegram';
 
 const STORAGE_KEY = 'proklinator_karma_profile_v3';
 
@@ -75,6 +76,7 @@ export const DEFAULT_PROFILE: UserKarmaProfile = {
 export class KarmaStore {
   private static instance: KarmaStore;
   private profile: UserKarmaProfile = DEFAULT_PROFILE;
+  private currentTelegramUser: TelegramUser | null = null;
   private listeners: (() => void)[] = [];
 
   private constructor() {
@@ -90,6 +92,14 @@ export class KarmaStore {
       } catch {
         this.profile = DEFAULT_PROFILE;
       }
+
+      // Auto-detect Telegram User
+      setTimeout(() => {
+        const tgUser = getTelegramUser();
+        if (tgUser) {
+          this.syncWithTelegramUser(tgUser);
+        }
+      }, 500);
     }
   }
 
@@ -102,6 +112,75 @@ export class KarmaStore {
 
   public getProfile(): UserKarmaProfile {
     return { ...this.profile };
+  }
+
+  public getTelegramUser(): TelegramUser | null {
+    return this.currentTelegramUser;
+  }
+
+  public async syncWithTelegramUser(user: TelegramUser) {
+    this.currentTelegramUser = user;
+    const userKey = user.id.toString();
+
+    try {
+      const res = await fetch(`/api/profile?userId=${userKey}`);
+      const data = await res.json();
+      if (data.success && data.profile) {
+        this.profile = { ...DEFAULT_PROFILE, ...data.profile };
+        this.recalculateRank();
+        this.saveLocally();
+        this.notify();
+      } else {
+        // Upload initial profile to cloud
+        this.uploadToCloud();
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  public async loginWithUsername(username: string): Promise<{ success: boolean; message: string }> {
+    const cleanUser = username.trim().replace(/^@/, '');
+    if (!cleanUser) return { success: false, message: 'Укажите username' };
+
+    try {
+      const res = await fetch(`/api/profile?username=${encodeURIComponent(cleanUser)}`);
+      const data = await res.json();
+      if (data.success && data.profile) {
+        this.profile = { ...DEFAULT_PROFILE, ...data.profile };
+        this.currentTelegramUser = { id: 0, first_name: cleanUser, username: cleanUser };
+        this.recalculateRank();
+        this.saveLocally();
+        this.notify();
+        return { success: true, message: `Профиль @${cleanUser} синхронизирован! Кармоиды загружены.` };
+      } else {
+        // Associate current profile with this username
+        this.currentTelegramUser = { id: 0, first_name: cleanUser, username: cleanUser };
+        await this.uploadToCloud();
+        return { success: true, message: `Профиль @${cleanUser} привязан к этому устройству!` };
+      }
+    } catch {
+      return { success: false, message: 'Ошибка связи с сервером' };
+    }
+  }
+
+  private async uploadToCloud() {
+    const key = this.currentTelegramUser?.id?.toString() || this.currentTelegramUser?.username;
+    if (!key) return;
+
+    try {
+      await fetch('/api/profile', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: this.currentTelegramUser?.id,
+          username: this.currentTelegramUser?.username,
+          profile: this.profile,
+        }),
+      });
+    } catch {
+      // ignore
+    }
   }
 
   public addCoins(amount: number) {
@@ -124,7 +203,6 @@ export class KarmaStore {
 
   public buyArtifact(artifact: ShopArtifact): { success: boolean; message: string } {
     let finalCost = artifact.cost;
-    // Rank 3 discount: 15% off shields
     if (artifact.actionType === 'shield' && this.profile.rankLevel >= 3) {
       finalCost = Math.round(finalCost * 0.85);
     }
@@ -191,11 +269,11 @@ export class KarmaStore {
     if (realm === 'light') {
       this.profile.blessingsSent += 1;
       this.addCoins(20);
-      this.addExperience(30); // +30 exp for blessings
+      this.addExperience(30);
     } else {
       this.profile.cursesSent += 1;
       this.addCoins(10);
-      this.addExperience(15); // +15 exp for curses
+      this.addExperience(15);
     }
   }
 
@@ -220,6 +298,11 @@ export class KarmaStore {
   }
 
   private save() {
+    this.saveLocally();
+    this.uploadToCloud();
+  }
+
+  private saveLocally() {
     if (typeof window !== 'undefined') {
       try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(this.profile));

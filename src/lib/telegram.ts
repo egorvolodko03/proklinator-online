@@ -22,21 +22,49 @@ export function getTelegramUser(): TelegramUser | null {
 
 export function triggerHaptic(type: 'light' | 'medium' | 'heavy' | 'success' | 'warning' | 'error' = 'medium') {
   if (typeof window === 'undefined') return;
+
+  // 1. Official Telegram Mini App Haptic API
   const haptic = (window as any).Telegram?.WebApp?.HapticFeedback;
   if (haptic) {
-    if (type === 'success' || type === 'warning' || type === 'error') {
-      haptic.notificationOccurred(type);
-    } else {
-      haptic.impactOccurred(type);
+    try {
+      if (type === 'success' || type === 'warning' || type === 'error') {
+        haptic.notificationOccurred(type);
+      } else {
+        haptic.impactOccurred(type);
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  // 2. Standard Mobile Browser Vibration Fallback
+  if ('vibrate' in navigator) {
+    try {
+      if (type === 'heavy' || type === 'error') {
+        navigator.vibrate([40, 30, 60]);
+      } else if (type === 'success') {
+        navigator.vibrate([25, 25, 45]);
+      } else {
+        navigator.vibrate(20);
+      }
+    } catch {
+      // ignore
     }
   }
 }
 
-export function initTelegramWebApp() {
+export function initTelegramMiniApp() {
   if (typeof window === 'undefined') return;
   const webApp = (window as any).Telegram?.WebApp;
   if (webApp) {
-    webApp.ready();
-    webApp.expand();
+    try {
+      webApp.ready();
+      webApp.expand();
+      if (webApp.enableClosingConfirmation) {
+        webApp.enableClosingConfirmation();
+      }
+    } catch {
+      // ignore
+    }
   }
 }
