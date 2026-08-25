@@ -12,10 +12,13 @@ export interface ToastMessage {
 
 interface ToastProps {
   toasts: ToastMessage[];
-  onDismiss: (id: string) => void;
+  onRemove?: (id: string) => void;
+  onDismiss?: (id: string) => void;
 }
 
-export const ToastContainer: React.FC<ToastProps> = ({ toasts, onDismiss }) => {
+export const ToastContainer: React.FC<ToastProps> = ({ toasts, onRemove, onDismiss }) => {
+  const dismiss = onRemove || onDismiss || (() => {});
+
   return (
     <div className="fixed bottom-6 right-6 z-50 flex flex-col gap-3 max-w-sm pointer-events-none">
       <AnimatePresence>
@@ -25,20 +28,22 @@ export const ToastContainer: React.FC<ToastProps> = ({ toasts, onDismiss }) => {
             initial={{ opacity: 0, y: 20, scale: 0.9 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 10, scale: 0.9 }}
-            onClick={() => onDismiss(toast.id)}
-            className="pointer-events-auto flex items-center gap-3 px-4 py-3 rounded-xl bg-void-900/90 border border-astral-500/40 text-neutral-100 shadow-glow-violet backdrop-blur-md cursor-pointer hover:border-astral-400 transition-colors"
+            onClick={() => dismiss(toast.id)}
+            className="pointer-events-auto flex items-center gap-3 px-4 py-3 rounded-xl bg-void-900/90 border border-karma-gold/40 text-neutral-100 shadow-glow-gold backdrop-blur-md cursor-pointer hover:border-karma-gold transition-colors"
           >
             {toast.type === 'error' ? (
               <AlertCircle className="w-5 h-5 text-rose-500 shrink-0" />
             ) : toast.type === 'info' ? (
-              <Sparkles className="w-5 h-5 text-astral-400 shrink-0 animate-pulse" />
+              <Sparkles className="w-5 h-5 text-karma-gold shrink-0 animate-pulse" />
             ) : (
               <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
             )}
-            <p className="text-sm font-medium leading-snug">{toast.text}</p>
+            <p className="text-sm font-medium leading-snug font-sans">{toast.text}</p>
           </motion.div>
         ))}
       </AnimatePresence>
     </div>
   );
 };
+
+export const Toast = ToastContainer;
