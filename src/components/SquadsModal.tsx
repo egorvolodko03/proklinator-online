@@ -291,7 +291,7 @@ export const SquadsModal: React.FC<SquadsModalProps> = ({
                             {member.name}
                           </span>
                           {member.role === 'owner' && (
-                            <Crown className="w-3.5 h-3.5 text-karma-gold" title="Создатель" />
+                            <span title="Создатель"><Crown className="w-3.5 h-3.5 text-karma-gold" /></span>
                           )}
                         </div>
                         <div className="flex items-center gap-2 text-[11px] text-zinc-500 font-mono mt-0.5">
