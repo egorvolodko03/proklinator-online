@@ -133,13 +133,26 @@ export interface Squad {
   members: SquadMember[];
 }
 
+export interface TelegramUserData {
+  id: number;
+  first_name: string;
+  last_name?: string;
+  username?: string;
+  photo_url?: string;
+  auth_date?: number;
+  hash?: string;
+}
+
 export interface UserKarmaProfile {
+  isAuthorized: boolean;
+  telegramUser: TelegramUserData | null;
   coins: number;
   experience: number;
   rankLevel: number;
   activeShields: number;
   hasAbsolution: boolean;
   hasGoldenSeal: boolean;
+  useGoldenSealForNext: boolean;
   hasDetectiveEye: boolean;
   streakDays: number;
   lastDailyClaimDate?: string;

@@ -10,16 +10,10 @@ import {
   Check, 
   Flame, 
   Sun, 
-  Sparkles, 
   Send, 
   Crown, 
-  Shield, 
-  UserPlus,
-  Share2,
-  Building,
-  Laptop,
-  Home,
-  Heart
+  Lock,
+  UserPlus
 } from 'lucide-react';
 import { sound } from '@/lib/audio';
 import { triggerHaptic } from '@/lib/telegram';
@@ -31,23 +25,29 @@ interface SquadsSectionProps {
   onOpenSquadsModal: () => void;
   onTargetMember: (member: SquadMember, squad: Squad) => void;
   onShowToast: (text: string, type?: 'success' | 'info' | 'error') => void;
+  onRequireAuth?: () => void;
 }
 
 export const SquadsSection: React.FC<SquadsSectionProps> = ({
   onOpenSquadsModal,
   onTargetMember,
   onShowToast,
+  onRequireAuth,
 }) => {
   const [squads, setSquads] = useState<Squad[]>(() => squadStore.getSquads());
   const [profile, setProfile] = useState<UserKarmaProfile>(() => karmaStore.getProfile());
-  const [selectedSquadId, setSelectedSquadId] = useState<string>(
-    profile.activeSquadId || squads[0]?.id || 'sq-yandex'
+  const [selectedSquadId, setSelectedSquadId] = useState<string | undefined>(
+    profile.activeSquadId || squads[0]?.id
   );
   const [isCopied, setIsCopied] = useState(false);
 
   useEffect(() => {
     const unsubSquads = squadStore.subscribe(() => {
-      setSquads(squadStore.getSquads());
+      const all = squadStore.getSquads();
+      setSquads(all);
+      if (!selectedSquadId && all.length > 0) {
+        setSelectedSquadId(all[0].id);
+      }
     });
     const unsubKarma = karmaStore.subscribe(() => {
       setProfile(karmaStore.getProfile());
@@ -56,9 +56,17 @@ export const SquadsSection: React.FC<SquadsSectionProps> = ({
       unsubSquads();
       unsubKarma();
     };
-  }, []);
+  }, [selectedSquadId]);
 
   const currentSquad = squads.find((s) => s.id === selectedSquadId) || squads[0];
+
+  const handleAction = () => {
+    if (!profile.isAuthorized && onRequireAuth) {
+      onRequireAuth();
+    } else {
+      onOpenSquadsModal();
+    }
+  };
 
   const handleCopyInvite = () => {
     if (!currentSquad) return;
@@ -100,9 +108,9 @@ export const SquadsSection: React.FC<SquadsSectionProps> = ({
             onClick={() => {
               sound.playClick();
               triggerHaptic('light');
-              onOpenSquadsModal();
+              handleAction();
             }}
-            className="flex items-center gap-1.5 rounded-xl border border-void-700 bg-void-850 px-3 py-2 text-xs font-bold text-zinc-200 hover:border-karma-gold hover:text-white transition-all font-heading"
+            className="flex items-center gap-1.5 rounded-xl border border-void-700 bg-void-850 px-3.5 py-2 text-xs font-bold text-zinc-200 hover:border-karma-gold hover:text-white transition-all font-heading"
           >
             <Plus className="w-3.5 h-3.5 text-karma-gold" />
             <span>Управление сквадами</span>
@@ -110,106 +118,129 @@ export const SquadsSection: React.FC<SquadsSectionProps> = ({
         </div>
       </div>
 
-      {/* Squads Switcher Tabs */}
-      <div className="mt-4 flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
-        {squads.map((sq) => {
-          const isSelected = sq.id === selectedSquadId;
-          return (
-            <button
-              key={sq.id}
-              onClick={() => {
-                sound.playClick();
-                triggerHaptic('light');
-                setSelectedSquadId(sq.id);
-                karmaStore.setActiveSquad(sq.id);
-              }}
-              className={`flex shrink-0 items-center gap-2 rounded-xl border px-3.5 py-2 text-xs font-semibold transition-all font-heading ${
-                isSelected
-                  ? 'border-karma-gold bg-karma-gold/20 text-karma-gold shadow-glow-gold'
-                  : 'border-void-800 bg-void-900 text-zinc-400 hover:border-void-700 hover:text-zinc-200'
-              }`}
-            >
-              <span>{sq.icon}</span>
-              <span>{sq.name}</span>
-              <span className="text-[10px] text-zinc-500 font-mono">({sq.membersCount})</span>
-            </button>
-          );
-        })}
-      </div>
+      {/* Squads Content or Clean Zero-State */}
+      {squads.length > 0 ? (
+        <div className="mt-4 space-y-4">
+          {/* Squads Switcher Tabs */}
+          <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
+            {squads.map((sq) => {
+              const isSelected = sq.id === selectedSquadId;
+              return (
+                <button
+                  key={sq.id}
+                  onClick={() => {
+                    sound.playClick();
+                    triggerHaptic('light');
+                    setSelectedSquadId(sq.id);
+                    karmaStore.setActiveSquad(sq.id);
+                  }}
+                  className={`flex shrink-0 items-center gap-2 rounded-xl border px-3.5 py-2 text-xs font-semibold transition-all font-heading ${
+                    isSelected
+                      ? 'border-karma-gold bg-karma-gold/20 text-karma-gold shadow-glow-gold'
+                      : 'border-void-800 bg-void-900 text-zinc-400 hover:border-void-700 hover:text-zinc-200'
+                  }`}
+                >
+                  <span>{sq.icon}</span>
+                  <span>{sq.name}</span>
+                  <span className="text-[10px] text-zinc-500 font-mono">({sq.membersCount})</span>
+                </button>
+              );
+            })}
+          </div>
 
-      {/* Active Squad Card */}
-      {currentSquad && (
-        <div className="mt-4 rounded-2xl border border-void-800 bg-void-950/80 p-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div className="flex items-start gap-3">
-              <span className="text-3xl p-2.5 rounded-2xl bg-void-900 border border-void-800">
-                {currentSquad.icon}
-              </span>
-              <div>
-                <h4 className="font-heading text-base font-bold text-white">
-                  {currentSquad.name}
-                </h4>
-                <p className="text-xs text-zinc-400 font-sans mt-0.5 max-w-lg">
-                  {currentSquad.description}
-                </p>
+          {/* Active Squad Details */}
+          {currentSquad && (
+            <div className="rounded-2xl border border-void-800 bg-void-950/80 p-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="flex items-start gap-3">
+                  <span className="text-3xl p-2.5 rounded-2xl bg-void-900 border border-void-800">
+                    {currentSquad.icon}
+                  </span>
+                  <div>
+                    <h4 className="font-heading text-base font-bold text-white">
+                      {currentSquad.name}
+                    </h4>
+                    <p className="text-xs text-zinc-400 font-sans mt-0.5 max-w-lg">
+                      {currentSquad.description}
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  onClick={handleCopyInvite}
+                  className="flex items-center justify-center gap-2 rounded-xl border border-karma-gold/40 bg-karma-gold/10 px-4 py-2.5 text-xs font-bold text-karma-gold hover:bg-karma-gold/20 transition-all font-mono"
+                >
+                  {isCopied ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4 text-karma-gold" />}
+                  <span>Инвайт: {currentSquad.inviteCode}</span>
+                </button>
+              </div>
+
+              {/* Members */}
+              <div className="mt-5 border-t border-void-800 pt-4">
+                <div className="flex items-center justify-between text-xs font-bold text-zinc-300 font-heading uppercase tracking-wider mb-3">
+                  <span>Участники сквада ({currentSquad.members.length}):</span>
+                  <span className="text-[11px] text-zinc-500 font-normal">Нажмите «Наслать», чтобы отправить анонимный вердикт</span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5">
+                  {currentSquad.members.map((member) => (
+                    <div
+                      key={member.id}
+                      className="flex items-center justify-between rounded-xl border border-void-800 bg-void-900/70 p-3 hover:border-void-700 transition-all"
+                    >
+                      <div className="flex items-center gap-2.5 truncate">
+                        <span className="text-2xl shrink-0">{member.avatar}</span>
+                        <div className="truncate">
+                          <div className="flex items-center gap-1.5 truncate">
+                            <span className="font-heading text-xs font-bold text-white truncate">
+                              {member.name}
+                            </span>
+                            {member.role === 'owner' && (
+                              <Crown className="w-3 h-3 text-karma-gold shrink-0" />
+                            )}
+                          </div>
+                          <div className="text-[10px] text-zinc-500 font-mono">
+                            🔥 {member.sinsCount} кар • ✨ {member.blessingsCount} добр
+                          </div>
+                        </div>
+                      </div>
+
+                      <button
+                        onClick={() => {
+                          sound.playClick();
+                          triggerHaptic('medium');
+                          onTargetMember(member, currentSquad);
+                        }}
+                        className="flex items-center gap-1 rounded-lg bg-void-800 hover:bg-inferno-600 hover:text-white px-2.5 py-1.5 text-[11px] font-semibold text-zinc-300 transition-all font-heading shrink-0 ml-2"
+                      >
+                        <Send className="w-3 h-3" />
+                        <span>Наслать</span>
+                      </button>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
+          )}
+        </div>
+      ) : (
+        /* Clean Zero State */
+        <div className="mt-4 py-8 text-center rounded-2xl border border-dashed border-void-800 bg-void-950/40 p-6">
+          <Users className="w-10 h-10 text-zinc-600 mx-auto mb-3" />
+          <h4 className="font-heading text-sm font-bold text-white mb-1">
+            У вас пока нет активных сквадов
+          </h4>
+          <p className="text-xs text-zinc-400 font-sans max-w-md mx-auto mb-5 leading-relaxed">
+            Создайте закрытый сквад для вашего офиса, семьи или соседей, либо вступите по инвайт-коду от коллеги.
+          </p>
 
-            {/* Invite Button */}
-            <button
-              onClick={handleCopyInvite}
-              className="flex items-center justify-center gap-2 rounded-xl border border-karma-gold/40 bg-karma-gold/10 px-4 py-2.5 text-xs font-bold text-karma-gold hover:bg-karma-gold/20 transition-all font-mono"
-            >
-              {isCopied ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4 text-karma-gold" />}
-              <span>Инвайт: {currentSquad.inviteCode}</span>
-            </button>
-          </div>
-
-          {/* Members Grid */}
-          <div className="mt-5 border-t border-void-800 pt-4">
-            <div className="flex items-center justify-between text-xs font-bold text-zinc-300 font-heading uppercase tracking-wider mb-3">
-              <span>Участники сквада ({currentSquad.members.length}):</span>
-              <span className="text-[11px] text-zinc-500 font-normal">Нажмите «Наслать», чтобы отправить анонимный вердикт</span>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5">
-              {currentSquad.members.map((member) => (
-                <div
-                  key={member.id}
-                  className="flex items-center justify-between rounded-xl border border-void-800 bg-void-900/70 p-3 hover:border-void-700 transition-all"
-                >
-                  <div className="flex items-center gap-2.5 truncate">
-                    <span className="text-2xl shrink-0">{member.avatar}</span>
-                    <div className="truncate">
-                      <div className="flex items-center gap-1.5 truncate">
-                        <span className="font-heading text-xs font-bold text-white truncate">
-                          {member.name}
-                        </span>
-                        {member.role === 'owner' && (
-                          <Crown className="w-3 h-3 text-karma-gold shrink-0" />
-                        )}
-                      </div>
-                      <div className="text-[10px] text-zinc-500 font-mono">
-                        🔥 {member.sinsCount} кар • ✨ {member.blessingsCount} добр
-                      </div>
-                    </div>
-                  </div>
-
-                  <button
-                    onClick={() => {
-                      sound.playClick();
-                      triggerHaptic('medium');
-                      onTargetMember(member, currentSquad);
-                    }}
-                    className="flex items-center gap-1 rounded-lg bg-void-800 hover:bg-inferno-600 hover:text-white px-2.5 py-1.5 text-[11px] font-semibold text-zinc-300 transition-all font-heading shrink-0 ml-2"
-                  >
-                    <Send className="w-3 h-3" />
-                    <span>Наслать</span>
-                  </button>
-                </div>
-              ))}
-            </div>
-          </div>
+          <button
+            onClick={handleAction}
+            className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-amber-400 via-karma-gold to-amber-500 px-5 py-2.5 text-xs font-bold text-void-950 shadow-glow-gold hover:scale-105 active:scale-95 transition-all font-heading"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Создать первый сквад</span>
+          </button>
         </div>
       )}
     </section>

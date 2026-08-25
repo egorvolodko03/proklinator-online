@@ -13,11 +13,13 @@ import { SquadsSection } from '@/components/SquadsSection';
 import { TipModal } from '@/components/TipModal';
 import { SquadsModal } from '@/components/SquadsModal';
 import { AltarRouletteModal } from '@/components/AltarRouletteModal';
+import { AuthModal } from '@/components/AuthModal';
 import { Toast, ToastMessage } from '@/components/Toast';
 import { DecreeVerdict, KarmaRealm, Category, Squad, SquadMember } from '@/types';
 import { sound } from '@/lib/audio';
 import { initTelegramMiniApp } from '@/lib/telegram';
 import { squadStore } from '@/lib/squadStore';
+import { karmaStore } from '@/lib/karmaStore';
 
 function AppContent() {
   const searchParams = useSearchParams();
@@ -27,6 +29,7 @@ function AppContent() {
   const [isTipOpen, setIsTipOpen] = useState(false);
   const [isSquadsOpen, setIsSquadsOpen] = useState(false);
   const [isAltarOpen, setIsAltarOpen] = useState(false);
+  const [isAuthOpen, setIsAuthOpen] = useState(false);
 
   const [preselectedMember, setPreselectedMember] = useState<SquadMember | null>(null);
   const [preselectedSquad, setPreselectedSquad] = useState<Squad | null>(null);
@@ -50,10 +53,17 @@ function AppContent() {
     // Check for join_squad in URL
     const joinSquadCode = searchParams.get('join_squad');
     if (joinSquadCode) {
-      const res = squadStore.joinSquadByCode(joinSquadCode, 'Вы', '🧙');
-      if (res.success) {
-        addToast(res.message, 'success');
-        setIsSquadsOpen(true);
+      if (karmaStore.isAuthorized()) {
+        const profile = karmaStore.getProfile();
+        const userName = profile.telegramUser?.first_name || 'Вы';
+        const res = squadStore.joinSquadByCode(joinSquadCode, userName, '🧙', profile.telegramUser?.username);
+        if (res.success) {
+          addToast(res.message, 'success');
+          setIsSquadsOpen(true);
+        }
+      } else {
+        addToast('Для вступления в сквад требуется авторизация через Telegram', 'info');
+        setIsAuthOpen(true);
       }
     }
 
@@ -108,29 +118,52 @@ function AppContent() {
       <Navbar
         realm={realm}
         onOpenTipModal={() => setIsTipOpen(true)}
-        onOpenSquadsModal={() => setIsSquadsOpen(true)}
-        onOpenAltarModal={() => setIsAltarOpen(true)}
+        onOpenSquadsModal={() => {
+          if (!karmaStore.isAuthorized()) {
+            setIsAuthOpen(true);
+          } else {
+            setIsSquadsOpen(true);
+          }
+        }}
+        onOpenAltarModal={() => {
+          if (!karmaStore.isAuthorized()) {
+            setIsAuthOpen(true);
+          } else {
+            setIsAltarOpen(true);
+          }
+        }}
+        onOpenAuthModal={() => setIsAuthOpen(true)}
       />
 
       {/* Main Content */}
       <main className="mx-auto max-w-7xl px-2.5 sm:px-6 py-4 sm:py-8 space-y-8 sm:space-y-12">
-        {/* Hero Section */}
-        <Hero
-          onStartRitual={() => handleStartRitual('dark')}
-          onStartBlessing={() => handleStartRitual('light')}
-          onOpenTipModal={() => setIsTipOpen(true)}
-          onOpenSquadsModal={() => setIsSquadsOpen(true)}
-          onOpenAltarModal={() => setIsAltarOpen(true)}
-        />
-
         {/* Realm Mode Toggle */}
         <RealmSelector activeRealm={realm} onSelectRealm={setRealm} />
 
+        {/* Hero Section */}
+        <Hero
+          realm={realm}
+          onStartRitual={() => handleStartRitual(realm)}
+          onOpenSquadsModal={() => {
+            if (!karmaStore.isAuthorized()) setIsAuthOpen(true);
+            else setIsSquadsOpen(true);
+          }}
+          onOpenAltarModal={() => {
+            if (!karmaStore.isAuthorized()) setIsAuthOpen(true);
+            else setIsAltarOpen(true);
+          }}
+          onRequireAuth={() => setIsAuthOpen(true)}
+        />
+
         {/* Squads & Guilds Hub Section */}
         <SquadsSection
-          onOpenSquadsModal={() => setIsSquadsOpen(true)}
+          onOpenSquadsModal={() => {
+            if (!karmaStore.isAuthorized()) setIsAuthOpen(true);
+            else setIsSquadsOpen(true);
+          }}
           onTargetMember={handleTargetSquadMember}
           onShowToast={addToast}
+          onRequireAuth={() => setIsAuthOpen(true)}
         />
 
         {/* Real-Time Karma Dashboard */}
@@ -163,6 +196,7 @@ function AppContent() {
         isOpen={isTipOpen}
         onClose={() => setIsTipOpen(false)}
         onShowToast={addToast}
+        onRequireAuth={() => setIsAuthOpen(true)}
       />
 
       <SquadsModal
@@ -170,11 +204,19 @@ function AppContent() {
         onClose={() => setIsSquadsOpen(false)}
         onSelectMemberForRitual={handleTargetSquadMember}
         onShowToast={addToast}
+        onRequireAuth={() => setIsAuthOpen(true)}
       />
 
       <AltarRouletteModal
         isOpen={isAltarOpen}
         onClose={() => setIsAltarOpen(false)}
+        onShowToast={addToast}
+        onRequireAuth={() => setIsAuthOpen(true)}
+      />
+
+      <AuthModal
+        isOpen={isAuthOpen}
+        onClose={() => setIsAuthOpen(false)}
         onShowToast={addToast}
       />
 

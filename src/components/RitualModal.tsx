@@ -8,7 +8,7 @@ import {
   ArrowLeft, 
   Dices, 
   Flame, 
-  Sun,
+  Sun, 
   User, 
   FileText, 
   Sparkles, 
@@ -18,7 +18,8 @@ import {
   ChevronDown,
   AtSign,
   UserCheck,
-  UserPlus
+  UserPlus,
+  Crown
 } from 'lucide-react';
 import { Category, Curse, Blessing, DecreeVerdict, KarmaRealm, SeverityLevel, BlessingLevel, Squad, SquadMember } from '@/types';
 import { CATEGORY_LABELS, CLERKS, generateCaseNumber, formatDate } from '@/lib/utils';
@@ -95,6 +96,13 @@ export const RitualModal: React.FC<RitualModalProps> = ({
   const [verdict, setVerdict] = useState<DecreeVerdict | null>(null);
 
   useEffect(() => {
+    const unsub = squadStore.subscribe(() => {
+      setSquads(squadStore.getSquads());
+    });
+    return unsub;
+  }, []);
+
+  useEffect(() => {
     if (preselectedMember) {
       setTargetName(preselectedMember.name);
       setTelegramUsername(preselectedMember.username || '');
@@ -114,7 +122,7 @@ export const RitualModal: React.FC<RitualModalProps> = ({
 
   const handleNextFromStep1 = () => {
     if (!targetName.trim()) {
-      setErrorMsg('Укажите имя или выберите коллегу из выпадающего списка!');
+      setErrorMsg('Укажите имя получателя или выберите из списка сквада!');
       sound.playClick();
       triggerHaptic('error');
       return;
@@ -172,6 +180,9 @@ export const RitualModal: React.FC<RitualModalProps> = ({
     else sound.playCelestialChime();
     triggerHaptic('heavy');
 
+    const profile = karmaStore.getProfile();
+    const useGolden = profile.hasGoldenSeal && profile.useGoldenSealForNext;
+
     const finalTitle = isCustom
       ? isDark ? 'Персональное заклятие' : 'Персональное благословение'
       : isDark ? selectedCurse.title : selectedBlessing.title;
@@ -194,8 +205,14 @@ export const RitualModal: React.FC<RitualModalProps> = ({
       tier: isDark ? severity : blessingLevel,
       createdAt: formatDate(new Date()),
       clerkSignature: isDark ? CLERKS[Math.floor(Math.random() * CLERKS.length)] : 'Хранитель Небесной Благодати',
-      sealColor: isDark ? (severity === 'extreme' ? '#f43f5e' : '#f59e0b') : '#fbbf24',
+      sealColor: useGolden ? '#fbbf24' : isDark ? (severity === 'extreme' ? '#f43f5e' : '#f59e0b') : '#fbbf24',
+      isGoldenSeal: useGolden,
     };
+
+    if (useGolden) {
+      karmaStore.consumeGoldenSeal();
+      onShowToast('✨ Золотая Печать Клерка применена к грамоте!', 'success');
+    }
 
     setVerdict(newVerdict);
     setStep(4);
@@ -217,6 +234,7 @@ export const RitualModal: React.FC<RitualModalProps> = ({
           severity: newVerdict.tier,
           verdictText: newVerdict.verdictText,
           clerkSignature: newVerdict.clerkSignature,
+          isGoldenSeal: newVerdict.isGoldenSeal,
         }),
       }).catch((e) => console.log('Save error:', e));
     } catch {
@@ -328,7 +346,7 @@ export const RitualModal: React.FC<RitualModalProps> = ({
           )}
 
           <AnimatePresence mode="wait">
-            {/* STEP 1: TARGET WITH SQUAD DROPDOWN */}
+            {/* STEP 1: TARGET WITH MANUAL OR SQUAD DROPDOWN */}
             {step === 1 && (
               <motion.div
                 key="step1"
@@ -338,8 +356,8 @@ export const RitualModal: React.FC<RitualModalProps> = ({
                 transition={{ duration: 0.25 }}
                 className="space-y-4"
               >
-                {/* Squad Members Quick Dropdown Selector */}
-                {selectedSquad && (
+                {/* Squad Members Quick Dropdown Selector (if user has a squad) */}
+                {selectedSquad && selectedSquad.members.length > 0 && (
                   <div className="relative">
                     <label className="block text-[11px] sm:text-xs font-semibold text-zinc-300 uppercase tracking-wider mb-1.5 font-mono flex items-center justify-between">
                       <span className="flex items-center gap-1.5">
@@ -367,7 +385,7 @@ export const RitualModal: React.FC<RitualModalProps> = ({
                           ) : (
                             <>
                               <Users className="w-4 h-4 text-zinc-400 shrink-0" />
-                              <span className="text-zinc-400">Нажмите, чтобы выбрать коллегу/друга из списка...</span>
+                              <span className="text-zinc-400">Нажмите, чтобы выбрать человека из сквада...</span>
                             </>
                           )}
                         </span>
@@ -404,10 +422,10 @@ export const RitualModal: React.FC<RitualModalProps> = ({
                   </div>
                 )}
 
-                {/* Direct Name Input */}
+                {/* Direct Manual Name Input */}
                 <div>
                   <label className="block text-[11px] sm:text-xs font-semibold text-zinc-300 uppercase tracking-wider mb-1.5 font-mono">
-                    Или введите имя вручную:
+                    {selectedSquad ? 'Или введите имя любого человека вручную:' : 'Кому вынести вердикт (имя или прозвище):'}
                   </label>
                   <input
                     type="text"
@@ -417,7 +435,7 @@ export const RitualModal: React.FC<RitualModalProps> = ({
                       if (errorMsg) setErrorMsg('');
                     }}
                     onKeyDown={(e) => e.key === 'Enter' && handleNextFromStep1()}
-                    placeholder="Например: Марина из бухгалтерии, Сосед с 44-й кв., Егор..."
+                    placeholder="Например: Коллега из бухгалтерии, Сосед с перфоратором, Артём..."
                     maxLength={60}
                     className="w-full rounded-xl border border-void-700 bg-void-900 px-3.5 py-3 text-sm text-white placeholder-zinc-500 focus:border-karma-gold focus:outline-none transition-all font-sans"
                   />
@@ -426,7 +444,7 @@ export const RitualModal: React.FC<RitualModalProps> = ({
                 {/* Telegram Username (Optional) */}
                 <div>
                   <label className="block text-[11px] sm:text-xs font-semibold text-zinc-300 uppercase tracking-wider mb-1.5 font-mono flex items-center justify-between">
-                    <span>Telegram @username (для отправки фото в бота):</span>
+                    <span>Telegram @username (для отправки в личные сообщения):</span>
                     <span className="text-[10px] text-zinc-500 font-sans">опционально</span>
                   </label>
                   <div className="relative">
@@ -445,7 +463,7 @@ export const RitualModal: React.FC<RitualModalProps> = ({
                 {/* Category Chips */}
                 <div>
                   <label className="block text-[11px] sm:text-xs font-semibold text-zinc-300 uppercase tracking-wider mb-1.5 font-mono">
-                    Категория:
+                    Категория отношений:
                   </label>
                   <div className="flex flex-wrap gap-1.5 sm:gap-2">
                     {CATEGORIES.map((cat) => {

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Volume2, VolumeX, Flame, Shield, Sparkles, Users, Gift, Coins, Sun, UserCheck } from 'lucide-react';
+import { Volume2, VolumeX, Flame, Shield, Users, Gift, Coins, Sun, User, UserCheck, Lock } from 'lucide-react';
 import { sound } from '@/lib/audio';
 import { triggerHaptic } from '@/lib/telegram';
 import { karmaStore } from '@/lib/karmaStore';
@@ -13,6 +13,7 @@ interface NavbarProps {
   onOpenTipModal: () => void;
   onOpenSquadsModal: () => void;
   onOpenAltarModal: () => void;
+  onOpenAuthModal: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -20,6 +21,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenTipModal,
   onOpenSquadsModal,
   onOpenAltarModal,
+  onOpenAuthModal,
 }) => {
   const [isMuted, setIsMuted] = useState(false);
   const [profile, setProfile] = useState<UserKarmaProfile>(() => karmaStore.getProfile());
@@ -68,16 +70,36 @@ export const Navbar: React.FC<NavbarProps> = ({
           </div>
         </div>
 
-        {/* Action Controls Hub (Compact for Mobile) */}
+        {/* Action Controls Hub (Mobile Safe) */}
         <div className="flex items-center gap-1 sm:gap-2 shrink-0">
-          {/* Clerk Rank Badge (Desktop only) */}
-          <div
-            className={`hidden lg:flex items-center gap-1.5 rounded-xl border px-2.5 py-1 text-xs font-mono font-semibold ${currentRank.badgeColor}`}
-            title={`Ранг: ${currentRank.title}`}
-          >
-            <span>{currentRank.icon}</span>
-            <span className="font-heading text-[11px]">{currentRank.title}</span>
-          </div>
+          {/* Auth Button or User Badge */}
+          {profile.isAuthorized ? (
+            <button
+              onClick={() => {
+                sound.playClick();
+                triggerHaptic('light');
+                onOpenTipModal();
+              }}
+              className="flex items-center gap-1 rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-2 sm:px-2.5 py-1.5 text-xs font-bold text-emerald-300 font-heading"
+              title="Профиль авторизован"
+            >
+              <UserCheck className="w-3.5 h-3.5 text-emerald-400" />
+              <span className="hidden sm:inline truncate max-w-[80px]">{profile.telegramUser?.first_name || 'Профиль'}</span>
+            </button>
+          ) : (
+            <button
+              onClick={() => {
+                sound.playClick();
+                triggerHaptic('light');
+                onOpenAuthModal();
+              }}
+              className="flex items-center gap-1 rounded-xl border border-sky-500/40 bg-sky-500/15 px-2 sm:px-2.5 py-1.5 text-xs font-bold text-sky-300 font-heading hover:bg-sky-500/25 transition-all shadow-[0_0_15px_rgba(14,165,233,0.25)]"
+              title="Войти через Telegram"
+            >
+              <User className="w-3.5 h-3.5" />
+              <span>Войти</span>
+            </button>
+          )}
 
           {/* Squads Button */}
           <button
@@ -107,7 +129,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             <span className="hidden sm:inline">Алтарь</span>
           </button>
 
-          {/* Coins & Shields Button */}
+          {/* Coins & Inventory Button */}
           <button
             onClick={() => {
               sound.playClick();
@@ -115,7 +137,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               onOpenTipModal();
             }}
             className="flex items-center gap-1 rounded-xl border border-void-700 bg-void-900/90 px-2 sm:px-3 py-1.5 text-xs font-bold text-zinc-200 shadow-sm transition-all hover:border-astral-500 hover:text-white active:scale-95 font-heading"
-            title="Кармическая Лавка & Защитные Щиты"
+            title="Инвентарь & Кармическая Лавка"
           >
             <Coins className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-karma-gold" />
             <span className="text-karma-gold font-mono text-xs sm:text-sm">{profile.coins}</span>

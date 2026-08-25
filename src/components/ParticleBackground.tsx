@@ -39,24 +39,22 @@ export const ParticleBackground: React.FC<ParticleBackgroundProps> = ({ realm = 
 
     window.addEventListener('resize', handleResize);
 
-    // Color palettes based on realm
-    const darkColors = ['#ff4d28', '#8b5cf6', '#fbbf24', '#f43f5e', '#a78bfa'];
-    const lightColors = ['#fbbf24', '#f59e0b', '#10b981', '#38bdf8', '#ffffff'];
+    const darkColors = ['#ff4d28', '#f59e0b', '#8b5cf6', '#dc2626', '#fbbf24'];
+    const lightColors = ['#fbbf24', '#f59e0b', '#10b981', '#38bdf8', '#e2e8f0'];
 
     const activeColors = realm === 'dark' ? darkColors : lightColors;
 
-    // Create particles
-    const particleCount = 45;
+    const particleCount = 55;
     const particles: Particle[] = [];
 
     for (let i = 0; i < particleCount; i++) {
       particles.push({
         x: Math.random() * width,
         y: Math.random() * height,
-        size: Math.random() * 2.5 + 0.8,
-        speedY: realm === 'dark' ? -(Math.random() * 0.45 + 0.15) : (Math.random() * 0.35 + 0.1),
-        speedX: (Math.random() - 0.5) * 0.3,
-        opacity: Math.random() * 0.6 + 0.2,
+        size: Math.random() * 2.2 + 0.8,
+        speedY: realm === 'dark' ? -(Math.random() * 0.4 + 0.12) : Math.random() * 0.35 + 0.1,
+        speedX: (Math.random() - 0.5) * 0.25,
+        opacity: Math.random() * 0.55 + 0.2,
         color: activeColors[Math.floor(Math.random() * activeColors.length)],
       });
     }
@@ -64,11 +62,30 @@ export const ParticleBackground: React.FC<ParticleBackgroundProps> = ({ realm = 
     const render = () => {
       ctx.clearRect(0, 0, width, height);
 
+      // Draw connecting constellation lines
+      for (let i = 0; i < particles.length; i++) {
+        for (let j = i + 1; j < particles.length; j++) {
+          const dx = particles[i].x - particles[j].x;
+          const dy = particles[i].y - particles[j].y;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+
+          if (dist < 90) {
+            ctx.beginPath();
+            ctx.moveTo(particles[i].x, particles[i].y);
+            ctx.lineTo(particles[j].x, particles[j].y);
+            ctx.strokeStyle = realm === 'dark' ? 'rgba(255, 77, 40, 0.08)' : 'rgba(251, 191, 36, 0.1)';
+            ctx.lineWidth = 0.6;
+            ctx.stroke();
+          }
+        }
+      }
+
+      // Draw particle glowing dots
       particles.forEach((p) => {
         p.y += p.speedY;
         p.x += p.speedX;
 
-        // Wrap around
+        // Wrap boundaries
         if (p.y < 0) {
           p.y = height;
           p.x = Math.random() * width;
@@ -84,7 +101,7 @@ export const ParticleBackground: React.FC<ParticleBackgroundProps> = ({ realm = 
         ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
         ctx.fillStyle = p.color;
         ctx.globalAlpha = p.opacity;
-        ctx.shadowBlur = 8;
+        ctx.shadowBlur = 10;
         ctx.shadowColor = p.color;
         ctx.fill();
       });
@@ -103,7 +120,7 @@ export const ParticleBackground: React.FC<ParticleBackgroundProps> = ({ realm = 
   return (
     <canvas
       ref={canvasRef}
-      className="pointer-events-none fixed inset-0 z-0 h-full w-full opacity-60 transition-opacity duration-700"
+      className="pointer-events-none fixed inset-0 z-0 h-full w-full opacity-70 transition-opacity duration-700"
     />
   );
 };

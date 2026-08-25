@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Sparkles, Coins, Gift, Flame, Trophy, Check, RefreshCw } from 'lucide-react';
+import { X, Sparkles, Coins, Gift, Flame, Trophy, Check, RefreshCw, Lock } from 'lucide-react';
 import { sound } from '@/lib/audio';
 import { triggerHaptic } from '@/lib/telegram';
 import { karmaStore } from '@/lib/karmaStore';
@@ -14,12 +14,14 @@ interface AltarRouletteModalProps {
   isOpen: boolean;
   onClose: () => void;
   onShowToast: (text: string, type?: 'success' | 'info' | 'error') => void;
+  onRequireAuth?: () => void;
 }
 
 export const AltarRouletteModal: React.FC<AltarRouletteModalProps> = ({
   isOpen,
   onClose,
   onShowToast,
+  onRequireAuth,
 }) => {
   const [profile, setProfile] = useState<UserKarmaProfile>(() => karmaStore.getProfile());
   const [isSpinning, setIsSpinning] = useState(false);
@@ -33,6 +35,11 @@ export const AltarRouletteModal: React.FC<AltarRouletteModalProps> = ({
   const spinCost = isFreeDaily ? 0 : 20;
 
   const handleSpin = () => {
+    if (!profile.isAuthorized) {
+      if (onRequireAuth) onRequireAuth();
+      return;
+    }
+
     if (isSpinning) return;
     if (spinCost > 0 && profile.coins < spinCost) {
       sound.playClick();
@@ -52,7 +59,6 @@ export const AltarRouletteModal: React.FC<AltarRouletteModalProps> = ({
 
     const selectedPrize = spinRoulette();
 
-    // Visual cycling through prizes
     let current = 0;
     const interval = setInterval(() => {
       current = (current + 1) % GACHA_PRIZES.length;
@@ -80,7 +86,7 @@ export const AltarRouletteModal: React.FC<AltarRouletteModalProps> = ({
         // ignore
       }
 
-      onShowToast(`🎉 Алтарь даровал: «${selectedPrize.title}»!`, 'success');
+      onShowToast(`🎉 Алтарь даровал: «${selectedPrize.title}»! Награда в инвентаре.`, 'success');
     }, 2000);
   };
 
@@ -90,7 +96,7 @@ export const AltarRouletteModal: React.FC<AltarRouletteModalProps> = ({
         initial={{ opacity: 0, scale: 0.95, y: 15 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: 15 }}
-        className="relative w-full max-w-xl rounded-3xl border border-karma-gold/50 bg-void-950 p-6 shadow-[0_0_60px_rgba(251,191,36,0.2)] my-auto text-center"
+        className="relative w-full max-w-xl rounded-3xl border border-karma-gold/50 bg-void-950 p-5 sm:p-6 shadow-[0_0_60px_rgba(251,191,36,0.2)] my-auto text-center"
       >
         {/* Header */}
         <div className="flex items-center justify-between border-b border-void-800 pb-4 text-left">
@@ -99,11 +105,11 @@ export const AltarRouletteModal: React.FC<AltarRouletteModalProps> = ({
               <Sparkles className="w-5 h-5 animate-pulse" />
             </div>
             <div>
-              <h3 className="font-heading text-lg font-bold text-white">
+              <h3 className="font-heading text-base sm:text-lg font-bold text-white">
                 Алтарь Жертвоприношений & Рулетка
               </h3>
               <p className="text-xs text-zinc-400 font-sans">
-                Испытайте благосклонность духов: выбивайте щиты, индульгенции и джекпоты
+                Испытайте благосклонность духов: выбивайте щиты, печати и кармоиды
               </p>
             </div>
           </div>
@@ -120,14 +126,14 @@ export const AltarRouletteModal: React.FC<AltarRouletteModalProps> = ({
         </div>
 
         {/* Prize Grid */}
-        <div className="mt-6 grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+        <div className="mt-5 grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-2.5">
           {GACHA_PRIZES.map((prize, idx) => {
             const isHighlighted = isSpinning && highlightIdx === idx;
             const isWinner = wonPrize?.id === prize.id;
             return (
               <div
                 key={prize.id}
-                className={`relative flex flex-col items-center justify-center rounded-2xl border p-3.5 transition-all ${
+                className={`relative flex flex-col items-center justify-center rounded-2xl border p-3 transition-all ${
                   isWinner
                     ? 'border-karma-gold bg-karma-gold/20 shadow-glow-gold scale-105 ring-2 ring-karma-gold'
                     : isHighlighted
@@ -135,7 +141,7 @@ export const AltarRouletteModal: React.FC<AltarRouletteModalProps> = ({
                     : 'border-void-800 bg-void-900/80 text-zinc-400'
                 }`}
               >
-                <span className="text-3xl mb-1.5">{prize.icon}</span>
+                <span className="text-2xl sm:text-3xl mb-1">{prize.icon}</span>
                 <span className="font-heading text-xs font-bold text-white leading-tight">
                   {prize.title}
                 </span>
@@ -160,7 +166,7 @@ export const AltarRouletteModal: React.FC<AltarRouletteModalProps> = ({
           <button
             onClick={handleSpin}
             disabled={isSpinning}
-            className={`w-full py-4 rounded-2xl font-heading text-base font-bold text-void-950 transition-all active:scale-95 flex items-center justify-center gap-2 ${
+            className={`w-full py-3.5 sm:py-4 rounded-2xl font-heading text-sm sm:text-base font-bold text-void-950 transition-all active:scale-95 flex items-center justify-center gap-2 ${
               isSpinning
                 ? 'bg-void-800 text-zinc-500 cursor-not-allowed'
                 : 'bg-gradient-to-r from-amber-400 via-karma-gold to-amber-500 shadow-glow-gold hover:brightness-110 hover:scale-[1.02]'

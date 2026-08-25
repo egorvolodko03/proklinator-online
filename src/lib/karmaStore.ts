@@ -1,6 +1,6 @@
-import { ShopArtifact, UserKarmaProfile, GachaPrize } from '@/types';
+import { ShopArtifact, UserKarmaProfile, GachaPrize, TelegramUserData } from '@/types';
 import { getRankByExp } from '@/data/ranks';
-import { getTelegramUser, TelegramUser } from '@/lib/telegram';
+import { getTelegramUser, isTelegramWebApp } from '@/lib/telegram';
 
 const STORAGE_KEY = 'proklinator_karma_profile_v3';
 
@@ -9,19 +9,29 @@ export const SHOP_ARTIFACTS: ShopArtifact[] = [
     id: 'shield',
     icon: '🛡️',
     title: 'Зеркальный Щит Кармы',
-    description: 'Автоматически отражает 1 следующее проклятие обратно на отправителя («Кармический рикошет»).',
+    description: 'Автоматически отражает 1 следующее проклятие обратно на обидчика («Кармический рикошет»). Хранится в инвентаре.',
     cost: 50,
-    badge: '1 Защита',
+    badge: 'Авто-защита',
     badgeColor: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40',
     actionType: 'shield',
+  },
+  {
+    id: 'golden_seal',
+    icon: '👑',
+    title: 'Золотая Печать Клерка',
+    description: 'Превращает следующее проклятие или благословение в ультра-редкую анимированную золотую грамоту. Активируется в инвентаре.',
+    cost: 30,
+    badge: 'Усилитель',
+    badgeColor: 'bg-amber-500/20 text-amber-300 border-amber-500/40',
+    actionType: 'golden_seal',
   },
   {
     id: 'absolution',
     icon: '🕯️',
     title: 'Астральная Индульгенция',
-    description: 'Полностью аннулирует все полученные проклятия и очищает кармическую историю в реестре.',
+    description: 'Полностью аннулирует все полученные проклятия и очищает историю в реестре.',
     cost: 100,
-    badge: 'Полный Сброс',
+    badge: 'Очищение',
     badgeColor: 'bg-karma-gold/20 text-karma-gold border-karma-gold/40',
     actionType: 'absolution',
   },
@@ -29,45 +39,38 @@ export const SHOP_ARTIFACTS: ShopArtifact[] = [
     id: 'eye',
     icon: '🕵️',
     title: 'Око Истины (Детектор)',
-    description: 'Приоткрывает подсказку об анонимном отправителе (первую букву ника, категорию отношений).',
+    description: 'Приоткрывает подсказку об анонимном отправителе приговора.',
     cost: 40,
-    badge: 'Раскрытие Тайн',
+    badge: 'Детектив',
     badgeColor: 'bg-astral-500/20 text-astral-300 border-astral-500/40',
     actionType: 'eye',
-  },
-  {
-    id: 'golden_seal',
-    icon: '👑',
-    title: 'Золотая Печать Клерка',
-    description: 'Превращает любое созданное проклятие или благословение в ультра-редкую анимированную золотую грамоту.',
-    cost: 30,
-    badge: 'Премиум Статус',
-    badgeColor: 'bg-amber-500/20 text-amber-300 border-amber-500/40',
-    actionType: 'golden_seal',
   },
   {
     id: 'coffee',
     icon: '☕',
     title: 'Эспрессо Архивариусу',
-    description: 'Пожертвование на кофе канцелярии без дна с занесением на доску почета.',
+    description: 'Пожертвование на кофе клеркам канцелярии без дна.',
     cost: 0,
-    badge: 'Донат Клерку',
+    badge: 'Донат',
     badgeColor: 'bg-rose-500/20 text-rose-300 border-rose-500/40',
     actionType: 'coffee',
   },
 ];
 
 export const DEFAULT_PROFILE: UserKarmaProfile = {
+  isAuthorized: false,
+  telegramUser: null,
   coins: 80,
-  experience: 45,
+  experience: 0,
   rankLevel: 1,
-  activeShields: 1,
+  activeShields: 0,
   hasAbsolution: false,
   hasGoldenSeal: false,
+  useGoldenSealForNext: false,
   hasDetectiveEye: false,
   streakDays: 1,
-  squads: ['sq-yandex'],
-  activeSquadId: 'sq-yandex',
+  squads: [],
+  activeSquadId: undefined,
   blessingsSent: 0,
   cursesSent: 0,
   receivedDecrees: [],
@@ -76,7 +79,6 @@ export const DEFAULT_PROFILE: UserKarmaProfile = {
 export class KarmaStore {
   private static instance: KarmaStore;
   private profile: UserKarmaProfile = DEFAULT_PROFILE;
-  private currentTelegramUser: TelegramUser | null = null;
   private listeners: (() => void)[] = [];
 
   private constructor() {
@@ -93,13 +95,13 @@ export class KarmaStore {
         this.profile = DEFAULT_PROFILE;
       }
 
-      // Auto-detect Telegram User
+      // Check for Telegram WebApp environment
       setTimeout(() => {
         const tgUser = getTelegramUser();
-        if (tgUser) {
-          this.syncWithTelegramUser(tgUser);
+        if (tgUser && !this.profile.isAuthorized) {
+          this.authorizeWithTelegram(tgUser);
         }
-      }, 500);
+      }, 300);
     }
   }
 
@@ -114,24 +116,71 @@ export class KarmaStore {
     return { ...this.profile };
   }
 
-  public getTelegramUser(): TelegramUser | null {
-    return this.currentTelegramUser;
+  public isAuthorized(): boolean {
+    return this.profile.isAuthorized;
   }
 
-  public async syncWithTelegramUser(user: TelegramUser) {
-    this.currentTelegramUser = user;
-    const userKey = user.id.toString();
+  public authorizeWithTelegram(user: TelegramUserData) {
+    this.profile.isAuthorized = true;
+    this.profile.telegramUser = user;
+    this.save();
+    this.notify();
+    this.syncWithCloud();
+  }
+
+  public logout() {
+    this.profile.isAuthorized = false;
+    this.profile.telegramUser = null;
+    this.save();
+    this.notify();
+  }
+
+  public toggleUseGoldenSeal() {
+    if (this.profile.hasGoldenSeal) {
+      this.profile.useGoldenSealForNext = !this.profile.useGoldenSealForNext;
+      this.save();
+      this.notify();
+    }
+  }
+
+  public consumeGoldenSeal() {
+    if (this.profile.useGoldenSealForNext) {
+      this.profile.hasGoldenSeal = false;
+      this.profile.useGoldenSealForNext = false;
+      this.save();
+      this.notify();
+    }
+  }
+
+  public useAbsolution(): boolean {
+    if (this.profile.hasAbsolution) {
+      this.profile.hasAbsolution = false;
+      this.profile.receivedDecrees = [];
+      this.save();
+      this.notify();
+      return true;
+    }
+    return false;
+  }
+
+  private async syncWithCloud() {
+    if (!this.profile.telegramUser) return;
+    const userKey = this.profile.telegramUser.id.toString();
 
     try {
       const res = await fetch(`/api/profile?userId=${userKey}`);
       const data = await res.json();
       if (data.success && data.profile) {
-        this.profile = { ...DEFAULT_PROFILE, ...data.profile };
+        this.profile = {
+          ...this.profile,
+          ...data.profile,
+          isAuthorized: true,
+          telegramUser: this.profile.telegramUser,
+        };
         this.recalculateRank();
         this.saveLocally();
         this.notify();
       } else {
-        // Upload initial profile to cloud
         this.uploadToCloud();
       }
     } catch {
@@ -139,42 +188,15 @@ export class KarmaStore {
     }
   }
 
-  public async loginWithUsername(username: string): Promise<{ success: boolean; message: string }> {
-    const cleanUser = username.trim().replace(/^@/, '');
-    if (!cleanUser) return { success: false, message: 'Укажите username' };
-
-    try {
-      const res = await fetch(`/api/profile?username=${encodeURIComponent(cleanUser)}`);
-      const data = await res.json();
-      if (data.success && data.profile) {
-        this.profile = { ...DEFAULT_PROFILE, ...data.profile };
-        this.currentTelegramUser = { id: 0, first_name: cleanUser, username: cleanUser };
-        this.recalculateRank();
-        this.saveLocally();
-        this.notify();
-        return { success: true, message: `Профиль @${cleanUser} синхронизирован! Кармоиды загружены.` };
-      } else {
-        // Associate current profile with this username
-        this.currentTelegramUser = { id: 0, first_name: cleanUser, username: cleanUser };
-        await this.uploadToCloud();
-        return { success: true, message: `Профиль @${cleanUser} привязан к этому устройству!` };
-      }
-    } catch {
-      return { success: false, message: 'Ошибка связи с сервером' };
-    }
-  }
-
   private async uploadToCloud() {
-    const key = this.currentTelegramUser?.id?.toString() || this.currentTelegramUser?.username;
-    if (!key) return;
-
+    if (!this.profile.telegramUser) return;
     try {
       await fetch('/api/profile', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          userId: this.currentTelegramUser?.id,
-          username: this.currentTelegramUser?.username,
+          userId: this.profile.telegramUser.id,
+          username: this.profile.telegramUser.username,
           profile: this.profile,
         }),
       });
@@ -221,13 +243,13 @@ export class KarmaStore {
         break;
       case 'absolution':
         this.profile.hasAbsolution = true;
-        this.profile.receivedDecrees = [];
         break;
       case 'eye':
         this.profile.hasDetectiveEye = true;
         break;
       case 'golden_seal':
         this.profile.hasGoldenSeal = true;
+        this.profile.useGoldenSealForNext = true; // auto-activate
         break;
       case 'coffee':
         this.profile.coins += 20;
@@ -237,7 +259,7 @@ export class KarmaStore {
     this.addExperience(15);
     this.save();
     this.notify();
-    return { success: true, message: `Артефакт «${artifact.title}» активирован!` };
+    return { success: true, message: `Артефакт «${artifact.title}» приобретен и добавлен в инвентарь!` };
   }
 
   public applyGachaPrize(prize: GachaPrize) {
@@ -250,10 +272,10 @@ export class KarmaStore {
         break;
       case 'absolution':
         this.profile.hasAbsolution = true;
-        this.profile.receivedDecrees = [];
         break;
       case 'golden_seal':
         this.profile.hasGoldenSeal = true;
+        this.profile.useGoldenSealForNext = true;
         break;
       case 'coffee':
         this.profile.coins += 20;
