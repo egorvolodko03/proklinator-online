@@ -50,9 +50,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   const handleOpenBotAuth = () => {
     sound.playClick();
     triggerHaptic('medium');
-    const botUrl = `https://t.me/proklinator_bot?start=web_auth`;
+    const botUrl = `https://t.me/karma_chancellery_bot?start=web_auth`;
     window.open(botUrl, '_blank');
-    onShowToast('Перейдите в бота и нажмите Начать для быстрой авторизации', 'info');
+    onShowToast('Перейдите в бота @karma_chancellery_bot и нажмите Запустить', 'info');
   };
 
   return (
