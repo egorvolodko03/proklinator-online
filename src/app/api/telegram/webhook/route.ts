@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { verifySessionFromBot } from '@/app/api/auth/session/route';
+import { TelegramUserData } from '@/types';
 
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || '8633526756:AAG_RC5hwERAZ_fhX_Gq59Sz8iMpGa-0LcU';
 
 /**
  * Telegram Webhook Handler
- * Handles /start, /help and commands with instant fallback
+ * Handles /start, /help, auth deep-links and rich navigation
  */
 export async function POST(req: NextRequest) {
   try {
@@ -14,14 +16,35 @@ export async function POST(req: NextRequest) {
     if (message && message.text) {
       const chatId = message.chat.id;
       const firstName = message.from?.first_name || 'Смертный';
+      const lastName = message.from?.last_name || '';
       const username = message.from?.username;
+      const userId = message.from?.id || chatId;
+
+      const userObj: TelegramUserData = {
+        id: userId,
+        first_name: firstName,
+        last_name: lastName,
+        username: username,
+      };
+
+      // Check for /start with deep link payload (e.g. /start auth_abc123 or /start web_auth)
+      const textParts = message.text.split(' ');
+      if (textParts[0] === '/start' && textParts.length > 1) {
+        const payload = textParts[1].trim();
+        if (payload.startsWith('auth_') || payload.startsWith('web_auth')) {
+          verifySessionFromBot(payload, userObj);
+        }
+      }
+
+      // Also verify generic web_auth session if started directly
+      verifySessionFromBot('web_auth', userObj);
 
       if (message.text.startsWith('/start') || message.text.startsWith('/help')) {
         const welcomeText =
           `⚖️ <b>Добро пожаловать в Кармическую Канцелярию, ${firstName}!</b>\n\n` +
           `Здесь вершатся судьбы, накладываются шуточные микро-кары и ниспосылаются астральные благословения.\n\n` +
           `🛡️ <i>Ваш профиль ${username ? '@' + username : ''} успешно подключен к канцелярии. Теперь вы можете получать анонимные грамоты в виде полноценных фото, отражать их щитами и объединяться в офисные сквады!</i>\n\n` +
-          `Нажмите кнопку ниже, чтобы запустить приложение:`;
+          `Нажмите кнопку ниже, чтобы запустить нужный раздел:`;
 
         const bannerUrl = `https://proklinator-online.vercel.app/api/og?realm=dark&name=${encodeURIComponent(firstName)}&sin=${encodeURIComponent('Подключение к канцелярии')}&curse=${encodeURIComponent('Вам начислен бесплатный зеркальный щит от сглаза')}&title=${encodeURIComponent('Доступ в астрал открыт')}`;
 
@@ -35,11 +58,11 @@ export async function POST(req: NextRequest) {
           [
             {
               text: '👥 Офисные Сквады (Гильдии)',
-              web_app: { url: 'https://proklinator-online.vercel.app' },
+              web_app: { url: 'https://proklinator-online.vercel.app/?tab=squads' },
             },
             {
               text: '🛡️ Лавка & Алтарь',
-              web_app: { url: 'https://proklinator-online.vercel.app' },
+              web_app: { url: 'https://proklinator-online.vercel.app/?tab=altar' },
             },
           ],
         ];

@@ -50,6 +50,16 @@ function AppContent() {
   useEffect(() => {
     initTelegramMiniApp();
 
+    // Handle deep link tab routing from bot buttons
+    const tab = searchParams.get('tab');
+    if (tab === 'squads') {
+      setIsSquadsOpen(true);
+    } else if (tab === 'altar') {
+      setIsAltarOpen(true);
+    } else if (tab === 'shop') {
+      setIsTipOpen(true);
+    }
+
     // Check for join_squad in URL
     const joinSquadCode = searchParams.get('join_squad');
     if (joinSquadCode) {

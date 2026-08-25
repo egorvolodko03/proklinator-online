@@ -1,12 +1,13 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, ShieldCheck, Lock, Send, Sparkles, Check, ArrowRight, UserCheck } from 'lucide-react';
+import { X, ShieldCheck, Lock, Send, Sparkles, Check, ArrowRight, UserCheck, RefreshCw } from 'lucide-react';
 import { sound } from '@/lib/audio';
 import { triggerHaptic, getTelegramUser, isTelegramWebApp } from '@/lib/telegram';
 import { karmaStore } from '@/lib/karmaStore';
 import { TelegramUserData } from '@/types';
+import confetti from 'canvas-confetti';
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -23,34 +24,77 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 }) => {
   const [isTMA, setIsTMA] = useState(false);
   const [detectedUser, setDetectedUser] = useState<TelegramUserData | null>(null);
+  const [sessionToken, setSessionToken] = useState<string>('');
+  const [isWaitingForBot, setIsWaitingForBot] = useState(false);
+  const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
-    if (typeof window !== 'undefined') {
+    if (typeof window !== 'undefined' && isOpen) {
       const inApp = isTelegramWebApp();
       setIsTMA(inApp);
       const user = getTelegramUser();
       if (user) {
         setDetectedUser(user);
       }
+
+      // Generate session token for browser auth
+      const token = 'auth_' + Math.random().toString(36).substring(2, 10);
+      setSessionToken(token);
+      setIsWaitingForBot(false);
+
+      // Start polling for bot confirmation
+      const interval = setInterval(async () => {
+        try {
+          const res = await fetch(`/api/auth/session?token=${token}`);
+          const data = await res.json();
+          if (data.success && data.status === 'authenticated' && data.user) {
+            clearInterval(interval);
+            handleSuccessfulAuth(data.user);
+          }
+        } catch {
+          // ignore
+        }
+      }, 1500);
+
+      pollIntervalRef.current = interval;
+
+      return () => {
+        if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
+      };
     }
   }, [isOpen]);
+
+  const handleSuccessfulAuth = (user: TelegramUserData) => {
+    sound.playGoldenBell();
+    triggerHaptic('success');
+    try {
+      confetti({
+        particleCount: 50,
+        spread: 70,
+        origin: { y: 0.6 },
+        colors: ['#fbbf24', '#f59e0b', '#10b981'],
+      });
+    } catch {
+      // ignore
+    }
+    karmaStore.authorizeWithTelegram(user);
+    onShowToast(`🎉 Вы успешно авторизованы как ${user.first_name}!`, 'success');
+    if (onSuccess) onSuccess();
+    onClose();
+  };
 
   if (!isOpen) return null;
 
   const handleAuthorizeMiniApp = () => {
     if (!detectedUser) return;
-    sound.playGoldenBell();
-    triggerHaptic('success');
-    karmaStore.authorizeWithTelegram(detectedUser);
-    onShowToast(`🎉 Добро пожаловать, ${detectedUser.first_name}! Авторизация успешна.`, 'success');
-    if (onSuccess) onSuccess();
-    onClose();
+    handleSuccessfulAuth(detectedUser);
   };
 
   const handleOpenBotAuth = () => {
     sound.playClick();
     triggerHaptic('medium');
-    const botUrl = `https://t.me/karma_chancellery_bot?start=web_auth`;
+    setIsWaitingForBot(true);
+    const botUrl = `https://t.me/karma_chancellery_bot?start=${sessionToken}`;
     window.open(botUrl, '_blank');
     onShowToast('Перейдите в бота @karma_chancellery_bot и нажмите Запустить', 'info');
   };
@@ -99,6 +143,14 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           </p>
         </div>
 
+        {/* Live sync indicator when waiting for bot confirmation */}
+        {isWaitingForBot && (
+          <div className="mt-4 flex items-center justify-center gap-2 text-xs text-amber-300 bg-amber-500/10 border border-amber-500/30 p-2.5 rounded-xl font-mono">
+            <RefreshCw className="w-3.5 h-3.5 animate-spin text-amber-300" />
+            <span>Ожидаем подтверждения в боте...</span>
+          </div>
+        )}
+
         {/* Auth CTA Actions */}
         <div className="mt-6 space-y-3">
           {detectedUser ? (
@@ -115,7 +167,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl bg-gradient-to-r from-sky-500 to-sky-600 text-white font-heading text-sm font-bold shadow-[0_0_25px_rgba(14,165,233,0.4)] hover:scale-[1.02] active:scale-95 transition-all"
             >
               <Send className="w-4 h-4" />
-              <span>Войти через Telegram-бота</span>
+              <span>{isWaitingForBot ? 'Открыть бота повторно' : 'Войти через Telegram-бота'}</span>
             </button>
           )}
 

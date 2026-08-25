@@ -1,6 +1,6 @@
 import { Squad, SquadMember } from '@/types';
 
-const STORAGE_KEY = 'proklinator_squads_v3';
+const STORAGE_KEY = 'proklinator_squads_v4_clean';
 
 export const INITIAL_SQUADS: Squad[] = [];
 
@@ -12,9 +12,16 @@ export class SquadStore {
   private constructor() {
     if (typeof window !== 'undefined') {
       try {
+        // Clean legacy mock key
+        localStorage.removeItem('proklinator_squads_v3');
+        localStorage.removeItem('proklinator_squads_v2');
+        localStorage.removeItem('proklinator_squads_v1');
+
         const saved = localStorage.getItem(STORAGE_KEY);
         if (saved) {
-          this.squads = JSON.parse(saved);
+          const parsed: Squad[] = JSON.parse(saved);
+          // Filter out any mock legacy squads
+          this.squads = parsed.filter((s) => s.id !== 'sq-yandex' && s.id !== 'sq-buh' && s.id !== 'sq-house');
         } else {
           this.squads = [];
           this.save();

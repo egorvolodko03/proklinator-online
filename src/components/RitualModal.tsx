@@ -19,7 +19,8 @@ import {
   AtSign,
   UserCheck,
   UserPlus,
-  Crown
+  Crown,
+  Edit3
 } from 'lucide-react';
 import { Category, Curse, Blessing, DecreeVerdict, KarmaRealm, SeverityLevel, BlessingLevel, Squad, SquadMember } from '@/types';
 import { CATEGORY_LABELS, CLERKS, generateCaseNumber, formatDate } from '@/lib/utils';
@@ -70,6 +71,7 @@ export const RitualModal: React.FC<RitualModalProps> = ({
   // Wizard step: 1: Target, 2: Reason, 3: Verdict, 4: Processing, 5: Certificate
   const [step, setStep] = useState<1 | 2 | 3 | 4 | 5>(1);
 
+  const [isAuthorized, setIsAuthorized] = useState<boolean>(() => karmaStore.isAuthorized());
   const [squads, setSquads] = useState<Squad[]>(() => squadStore.getSquads());
   const [selectedSquad, setSelectedSquad] = useState<Squad | null>(
     preselectedSquad || squads[0] || null
@@ -96,11 +98,21 @@ export const RitualModal: React.FC<RitualModalProps> = ({
   const [verdict, setVerdict] = useState<DecreeVerdict | null>(null);
 
   useEffect(() => {
-    const unsub = squadStore.subscribe(() => {
-      setSquads(squadStore.getSquads());
+    const unsubSquads = squadStore.subscribe(() => {
+      const all = squadStore.getSquads();
+      setSquads(all);
+      if (!selectedSquad && all.length > 0) {
+        setSelectedSquad(all[0]);
+      }
     });
-    return unsub;
-  }, []);
+    const unsubKarma = karmaStore.subscribe(() => {
+      setIsAuthorized(karmaStore.isAuthorized());
+    });
+    return () => {
+      unsubSquads();
+      unsubKarma();
+    };
+  }, [selectedSquad]);
 
   useEffect(() => {
     if (preselectedMember) {
@@ -122,7 +134,7 @@ export const RitualModal: React.FC<RitualModalProps> = ({
 
   const handleNextFromStep1 = () => {
     if (!targetName.trim()) {
-      setErrorMsg('Укажите имя получателя или выберите из списка сквада!');
+      setErrorMsg('Укажите имя получателя грамоты!');
       sound.playClick();
       triggerHaptic('error');
       return;
@@ -346,7 +358,7 @@ export const RitualModal: React.FC<RitualModalProps> = ({
           )}
 
           <AnimatePresence mode="wait">
-            {/* STEP 1: TARGET WITH MANUAL OR SQUAD DROPDOWN */}
+            {/* STEP 1: TARGET SELECTION (GUEST VS AUTHORIZED) */}
             {step === 1 && (
               <motion.div
                 key="step1"
@@ -356,92 +368,114 @@ export const RitualModal: React.FC<RitualModalProps> = ({
                 transition={{ duration: 0.25 }}
                 className="space-y-4"
               >
-                {/* Squad Members Quick Dropdown Selector (if user has a squad) */}
-                {selectedSquad && selectedSquad.members.length > 0 && (
-                  <div className="relative">
-                    <label className="block text-[11px] sm:text-xs font-semibold text-zinc-300 uppercase tracking-wider mb-1.5 font-mono flex items-center justify-between">
-                      <span className="flex items-center gap-1.5">
-                        <Users className="w-3.5 h-3.5 text-karma-gold" />
-                        <span>Выбрать из сквада «{selectedSquad.name}»:</span>
-                      </span>
-                      <span className="text-[10px] text-karma-gold font-sans font-normal">🔒 Анонимно</span>
-                    </label>
-
+                {/* AUTHORIZED MODE WITH SQUAD: Show squad member dropdown */}
+                {isAuthorized && selectedSquad && selectedSquad.members.length > 0 ? (
+                  <div className="relative space-y-3">
                     <div className="relative">
-                      <button
-                        type="button"
-                        onClick={() => setIsSquadDropdownOpen(!isSquadDropdownOpen)}
-                        className="w-full flex items-center justify-between rounded-xl border border-void-700 bg-void-900 px-3.5 py-3 text-xs sm:text-sm text-zinc-200 hover:border-karma-gold transition-all font-sans"
-                      >
-                        <span className="flex items-center gap-2 truncate">
-                          {targetName ? (
-                            <>
-                              <UserCheck className="w-4 h-4 text-emerald-400 shrink-0" />
-                              <span className="font-semibold text-white truncate">Выбран: {targetName}</span>
-                              {telegramUsername && (
-                                <span className="text-zinc-500 font-mono text-xs">(@{telegramUsername})</span>
-                              )}
-                            </>
-                          ) : (
-                            <>
-                              <Users className="w-4 h-4 text-zinc-400 shrink-0" />
-                              <span className="text-zinc-400">Нажмите, чтобы выбрать человека из сквада...</span>
-                            </>
-                          )}
+                      <label className="block text-[11px] sm:text-xs font-semibold text-zinc-300 uppercase tracking-wider mb-1.5 font-mono flex items-center justify-between">
+                        <span className="flex items-center gap-1.5">
+                          <Users className="w-3.5 h-3.5 text-karma-gold" />
+                          <span>Выбрать из сквада «{selectedSquad.name}»:</span>
                         </span>
-                        <ChevronDown className={`w-4 h-4 text-zinc-400 shrink-0 transition-transform ${isSquadDropdownOpen ? 'rotate-180' : ''}`} />
-                      </button>
+                        <span className="text-[10px] text-karma-gold font-sans font-normal">🔒 Анонимно</span>
+                      </label>
 
-                      {/* Dropdown Menu */}
-                      {isSquadDropdownOpen && (
-                        <div className="absolute top-full left-0 right-0 z-30 mt-1.5 max-h-52 overflow-y-auto rounded-2xl border border-karma-gold/40 bg-void-900/95 p-2 shadow-2xl backdrop-blur-xl">
-                          {selectedSquad.members.map((m) => (
-                            <button
-                              key={m.id}
-                              type="button"
-                              onClick={() => handleSelectMember(m)}
-                              className="w-full flex items-center justify-between rounded-xl p-2.5 hover:bg-karma-gold/15 hover:text-white transition-colors text-left"
-                            >
-                              <div className="flex items-center gap-2.5 truncate">
-                                <span className="text-xl shrink-0">{m.avatar}</span>
-                                <div className="truncate">
-                                  <div className="font-heading text-xs font-bold text-white truncate">{m.name}</div>
-                                  {m.username && (
-                                    <div className="text-[10px] text-zinc-400 font-mono">@{m.username}</div>
-                                  )}
+                      <div className="relative">
+                        <button
+                          type="button"
+                          onClick={() => setIsSquadDropdownOpen(!isSquadDropdownOpen)}
+                          className="w-full flex items-center justify-between rounded-xl border border-void-700 bg-void-900 px-3.5 py-3 text-xs sm:text-sm text-zinc-200 hover:border-karma-gold transition-all font-sans"
+                        >
+                          <span className="flex items-center gap-2 truncate">
+                            {targetName ? (
+                              <>
+                                <UserCheck className="w-4 h-4 text-emerald-400 shrink-0" />
+                                <span className="font-semibold text-white truncate">Выбран: {targetName}</span>
+                                {telegramUsername && (
+                                  <span className="text-zinc-500 font-mono text-xs">(@{telegramUsername})</span>
+                                )}
+                              </>
+                            ) : (
+                              <>
+                                <Users className="w-4 h-4 text-zinc-400 shrink-0" />
+                                <span className="text-zinc-400">Нажмите для выбора коллеги из сквада...</span>
+                              </>
+                            )}
+                          </span>
+                          <ChevronDown className={`w-4 h-4 text-zinc-400 shrink-0 transition-transform ${isSquadDropdownOpen ? 'rotate-180' : ''}`} />
+                        </button>
+
+                        {/* Dropdown Menu */}
+                        {isSquadDropdownOpen && (
+                          <div className="absolute top-full left-0 right-0 z-30 mt-1.5 max-h-52 overflow-y-auto rounded-2xl border border-karma-gold/40 bg-void-900/95 p-2 shadow-2xl backdrop-blur-xl">
+                            {selectedSquad.members.map((m) => (
+                              <button
+                                key={m.id}
+                                type="button"
+                                onClick={() => handleSelectMember(m)}
+                                className="w-full flex items-center justify-between rounded-xl p-2.5 hover:bg-karma-gold/15 hover:text-white transition-colors text-left"
+                              >
+                                <div className="flex items-center gap-2.5 truncate">
+                                  <span className="text-xl shrink-0">{m.avatar}</span>
+                                  <div className="truncate">
+                                    <div className="font-heading text-xs font-bold text-white truncate">{m.name}</div>
+                                    {m.username && (
+                                      <div className="text-[10px] text-zinc-400 font-mono">@{m.username}</div>
+                                    )}
+                                  </div>
                                 </div>
-                              </div>
-                              <span className="text-[10px] text-zinc-500 font-mono shrink-0">
-                                🔥 {m.sinsCount} | ✨ {m.blessingsCount}
-                              </span>
-                            </button>
-                          ))}
-                        </div>
-                      )}
+                                <span className="text-[10px] text-zinc-500 font-mono shrink-0">
+                                  🔥 {m.sinsCount} | ✨ {m.blessingsCount}
+                                </span>
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
                     </div>
+
+                    {/* Manual Input Fallback */}
+                    <div>
+                      <label className="block text-[11px] sm:text-xs font-semibold text-zinc-300 uppercase tracking-wider mb-1.5 font-mono flex items-center gap-1.5">
+                        <Edit3 className="w-3.5 h-3.5 text-zinc-400" />
+                        <span>Или введите имя стороннего человека вручную:</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={targetName}
+                        onChange={(e) => {
+                          setTargetName(e.target.value);
+                          if (errorMsg) setErrorMsg('');
+                        }}
+                        onKeyDown={(e) => e.key === 'Enter' && handleNextFromStep1()}
+                        placeholder="Например: Курьер с пиццей, Сосед из 44 кв..."
+                        maxLength={60}
+                        className="w-full rounded-xl border border-void-700 bg-void-900 px-3.5 py-3 text-sm text-white placeholder-zinc-500 focus:border-karma-gold focus:outline-none transition-all font-sans"
+                      />
+                    </div>
+                  </div>
+                ) : (
+                  /* GUEST MODE OR AUTHORIZED WITHOUT SQUADS: Clean Direct Manual Input ONLY */
+                  <div>
+                    <label className="block text-[11px] sm:text-xs font-semibold text-zinc-300 uppercase tracking-wider mb-1.5 font-mono">
+                      Кому вынести вердикт (имя или прозвище):
+                    </label>
+                    <input
+                      type="text"
+                      value={targetName}
+                      onChange={(e) => {
+                        setTargetName(e.target.value);
+                        if (errorMsg) setErrorMsg('');
+                      }}
+                      onKeyDown={(e) => e.key === 'Enter' && handleNextFromStep1()}
+                      placeholder="Например: Марина из бухгалтерии, Сосед с перфоратором, Артём..."
+                      maxLength={60}
+                      className="w-full rounded-xl border border-void-700 bg-void-900 px-3.5 py-3 text-sm text-white placeholder-zinc-500 focus:border-karma-gold focus:outline-none transition-all font-sans"
+                    />
                   </div>
                 )}
 
-                {/* Direct Manual Name Input */}
-                <div>
-                  <label className="block text-[11px] sm:text-xs font-semibold text-zinc-300 uppercase tracking-wider mb-1.5 font-mono">
-                    {selectedSquad ? 'Или введите имя любого человека вручную:' : 'Кому вынести вердикт (имя или прозвище):'}
-                  </label>
-                  <input
-                    type="text"
-                    value={targetName}
-                    onChange={(e) => {
-                      setTargetName(e.target.value);
-                      if (errorMsg) setErrorMsg('');
-                    }}
-                    onKeyDown={(e) => e.key === 'Enter' && handleNextFromStep1()}
-                    placeholder="Например: Коллега из бухгалтерии, Сосед с перфоратором, Артём..."
-                    maxLength={60}
-                    className="w-full rounded-xl border border-void-700 bg-void-900 px-3.5 py-3 text-sm text-white placeholder-zinc-500 focus:border-karma-gold focus:outline-none transition-all font-sans"
-                  />
-                </div>
-
-                {/* Telegram Username (Optional) */}
+                {/* Telegram Username (Optional for direct messaging) */}
                 <div>
                   <label className="block text-[11px] sm:text-xs font-semibold text-zinc-300 uppercase tracking-wider mb-1.5 font-mono flex items-center justify-between">
                     <span>Telegram @username (для отправки в личные сообщения):</span>
