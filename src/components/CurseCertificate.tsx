@@ -2,7 +2,7 @@
 
 import React, { useRef, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Download, Copy, Send, RotateCcw, Flame, Check, ShieldAlert, Sparkles } from 'lucide-react';
+import { Download, Copy, Send, RotateCcw, Flame, Check, ShieldAlert, Sparkles, Share2 } from 'lucide-react';
 import { CurseVerdict } from '@/types';
 import { CATEGORY_LABELS } from '@/lib/utils';
 import { sound } from '@/lib/audio';
@@ -21,14 +21,16 @@ export const CurseCertificate: React.FC<CurseCertificateProps> = ({
 }) => {
   const certRef = useRef<HTMLDivElement | null>(null);
   const [isDownloading, setIsDownloading] = useState(false);
+  const [isSharing, setIsSharing] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
 
   const categoryInfo = CATEGORY_LABELS[verdict.category] || CATEGORY_LABELS.other;
 
-  // Generate share URL
+  // Generate clean share URL
   const getShareUrl = () => {
     if (typeof window === 'undefined') return '';
-    const url = new URL(window.location.origin);
+    const origin = window.location.origin;
+    const url = new URL(origin);
     url.searchParams.set('c_id', verdict.id);
     url.searchParams.set('name', verdict.targetName);
     url.searchParams.set('cat', verdict.category);
@@ -54,7 +56,7 @@ export const CurseCertificate: React.FC<CurseCertificateProps> = ({
         document.body.removeChild(input);
       }
       setIsCopied(true);
-      onShowToast('🔗 Ссылка на приговор скопирована в буфер!', 'success');
+      onShowToast('🔗 Ссылка на приговор скопирована!', 'success');
       setTimeout(() => setIsCopied(false), 3000);
     } catch {
       onShowToast('Не удалось скопировать ссылку', 'error');
@@ -65,12 +67,12 @@ export const CurseCertificate: React.FC<CurseCertificateProps> = ({
     if (!certRef.current) return;
     sound.playClick();
     setIsDownloading(true);
-    onShowToast('📜 Печатаем грамоту в высоком разрешении...', 'info');
+    onShowToast('📜 Формируем грамоту в высоком разрешении...', 'info');
 
     try {
       const dataUrl = await toPng(certRef.current, {
         cacheBust: true,
-        quality: 0.95,
+        quality: 0.98,
         pixelRatio: 2,
         backgroundColor: '#09090b',
       });
@@ -83,20 +85,58 @@ export const CurseCertificate: React.FC<CurseCertificateProps> = ({
       onShowToast('✨ Грамота успешно сохранена в PNG!', 'success');
     } catch (err) {
       console.error('Download error:', err);
-      onShowToast('Ошибка при скачивании грамоты', 'error');
+      onShowToast('Ошибка при сохранении грамоты', 'error');
     } finally {
       setIsDownloading(false);
     }
   };
 
-  const handleShareTelegram = () => {
+  /**
+   * Smart Telegram Share:
+   * 1. If Web Share API with Files is supported, shares the actual PNG Certificate file directly into Telegram!
+   * 2. If desktop / web fallback, opens a beautifully formatted Telegram link with a rich OpenGraph preview.
+   */
+  const handleShareTelegram = async () => {
     sound.playClick();
+    setIsSharing(true);
     const shareUrl = getShareUrl();
-    const text = encodeURIComponent(
-      `⚖️ ТЕМНАЯ КАНЦЕЛЯРИЯ КАРМЫ вынесла приговор гражданину "${verdict.targetName}"!\n\nДеяние: ${verdict.sin}\nКара: ${verdict.curseText}\n\nПосмотреть официальную грамоту:`
-    );
-    const tgUrl = `https://t.me/share/url?url=${encodeURIComponent(shareUrl)}&text=${text}`;
+
+    // Check if we can share file directly via Web Share API
+    if (certRef.current && navigator.share && navigator.canShare) {
+      try {
+        const dataUrl = await toPng(certRef.current, {
+          cacheBust: true,
+          quality: 0.95,
+          pixelRatio: 2,
+          backgroundColor: '#09090b',
+        });
+
+        const res = await fetch(dataUrl);
+        const blob = await res.blob();
+        const file = new File([blob], `Gramota-Karmy-${verdict.targetName}.png`, { type: 'image/png' });
+
+        if (navigator.canShare({ files: [file] })) {
+          await navigator.share({
+            title: 'Грамота Темной Канцелярии Кармы',
+            text: `⚖️ Грамота проклятия на имя "${verdict.targetName}"!\nДеяние: ${verdict.sin}\nКара: ${verdict.curseText}\n\nСмотреть онлайн:`,
+            url: shareUrl,
+            files: [file],
+          });
+          onShowToast('✨ Грамота отправлена!', 'success');
+          setIsSharing(false);
+          return;
+        }
+      } catch (err) {
+        console.log('Web share fallback to link:', err);
+      }
+    }
+
+    // Clean Telegram Web Share fallback
+    const formattedText = `⚖️ ТЕМНАЯ КАНЦЕЛЯРИЯ КАРМЫ\n📜 Официальный приговор гражданину: «${verdict.targetName}»\n\n⚡ Вменяемое деяние:\n«${verdict.sin}»\n\n🩸 Приговор Канцелярии:\n«${verdict.curseText}»\n\n🔗 Посмотреть заверенную грамоту:`;
+    
+    const tgUrl = `https://t.me/share/url?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(formattedText)}`;
     window.open(tgUrl, '_blank');
+    setIsSharing(false);
   };
 
   return (
@@ -143,7 +183,7 @@ export const CurseCertificate: React.FC<CurseCertificateProps> = ({
                   {categoryInfo.icon} {categoryInfo.label}
                 </span>
               </div>
-              <p className="font-serif text-xl sm:text-2xl font-bold text-white tracking-wide">
+              <p className="font-serif text-2xl sm:text-3xl font-bold text-white tracking-wide">
                 {verdict.targetName}
               </p>
             </div>
@@ -153,7 +193,7 @@ export const CurseCertificate: React.FC<CurseCertificateProps> = ({
               <span className="block text-[10px] font-semibold uppercase tracking-wider text-inferno-400 mb-1 font-mono">
                 Вменяемое деяние (Грех):
               </span>
-              <p className="font-serif text-base sm:text-lg text-zinc-200 italic leading-relaxed">
+              <p className="font-sans text-sm sm:text-base text-zinc-200 italic leading-relaxed">
                 «{verdict.sin}»
               </p>
             </div>
@@ -172,7 +212,7 @@ export const CurseCertificate: React.FC<CurseCertificateProps> = ({
               <h4 className="font-serif text-lg font-bold text-yellow-300 mb-1">
                 {verdict.curseTitle}
               </h4>
-              <p className="font-serif text-base text-zinc-100 font-medium leading-relaxed">
+              <p className="font-sans text-sm sm:text-base text-zinc-100 font-medium leading-relaxed">
                 {verdict.curseText}
               </p>
             </div>
@@ -183,7 +223,7 @@ export const CurseCertificate: React.FC<CurseCertificateProps> = ({
             {/* Clerk Signature */}
             <div className="text-left">
               <div className="text-[10px] font-mono text-zinc-500 uppercase">Секретарь трибунала:</div>
-              <div className="font-script text-xl text-amber-200 leading-tight">
+              <div className="font-script text-2xl text-amber-200 leading-tight">
                 {verdict.clerkSignature}
               </div>
               <div className="mt-1 flex items-center gap-1">
@@ -218,13 +258,14 @@ export const CurseCertificate: React.FC<CurseCertificateProps> = ({
 
       {/* Action Buttons Toolbar */}
       <div className="mt-6 flex flex-wrap items-center justify-center gap-3 max-w-lg px-4">
-        {/* Copy Link */}
+        {/* Share to Telegram (Smart image/link) */}
         <button
-          onClick={handleCopyLink}
-          className="flex items-center gap-2 rounded-xl border border-void-700 bg-void-850 px-4 py-3 text-sm font-semibold text-zinc-200 shadow-md transition-all hover:border-astral-500 hover:text-white hover:shadow-glow-violet active:scale-95"
+          onClick={handleShareTelegram}
+          disabled={isSharing}
+          className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-sky-600 to-sky-500 px-5 py-3 text-sm font-bold text-white shadow-[0_0_20px_rgba(14,165,233,0.4)] transition-all hover:scale-105 active:scale-95 disabled:opacity-50"
         >
-          {isCopied ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4 text-astral-400" />}
-          <span>{isCopied ? 'Скопировано!' : 'Скопировать ссылку для жертвы'}</span>
+          <Send className="w-4 h-4" />
+          <span>{isSharing ? 'Подготовка...' : 'Отправить в Telegram'}</span>
         </button>
 
         {/* Download PNG Certificate */}
@@ -234,16 +275,16 @@ export const CurseCertificate: React.FC<CurseCertificateProps> = ({
           className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-inferno-600 to-inferno-500 px-5 py-3 text-sm font-bold text-white shadow-glow-crimson transition-all hover:scale-105 active:scale-95 disabled:opacity-50"
         >
           <Download className="w-4 h-4" />
-          <span>{isDownloading ? 'Формирование PNG...' : 'Скачать грамоту'}</span>
+          <span>{isDownloading ? 'Сохранение...' : 'Скачать грамоту'}</span>
         </button>
 
-        {/* Share to Telegram */}
+        {/* Copy Link */}
         <button
-          onClick={handleShareTelegram}
-          className="flex items-center gap-2 rounded-xl border border-sky-500/40 bg-sky-500/10 px-4 py-3 text-sm font-semibold text-sky-400 shadow-md transition-all hover:bg-sky-500/20 hover:border-sky-400 hover:text-sky-300 active:scale-95"
+          onClick={handleCopyLink}
+          className="flex items-center gap-2 rounded-xl border border-void-700 bg-void-850 px-4 py-3 text-sm font-semibold text-zinc-200 shadow-md transition-all hover:border-astral-500 hover:text-white hover:shadow-glow-violet active:scale-95"
         >
-          <Send className="w-4 h-4" />
-          <span>В Telegram</span>
+          {isCopied ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4 text-astral-400" />}
+          <span>{isCopied ? 'Скопировано!' : 'Скопировать ссылку'}</span>
         </button>
 
         {/* Reset / Curse Another */}
