@@ -27,12 +27,11 @@ export const CurseCertificate: React.FC<CurseCertificateProps> = ({
   const isDark = verdict.realm === 'dark';
   const categoryInfo = CATEGORY_LABELS[verdict.category] || CATEGORY_LABELS.other;
 
-  // Generate share URL
+  // Clean, short share URL with dynamic OG metadata
   const getShareUrl = () => {
     if (typeof window === 'undefined') return '';
     const origin = window.location.origin;
-    const url = new URL(origin);
-    url.searchParams.set('c_id', verdict.id);
+    const url = new URL(`${origin}/c/${verdict.id}`);
     url.searchParams.set('realm', verdict.realm);
     url.searchParams.set('name', verdict.targetName);
     if (verdict.telegramUsername) {
@@ -99,6 +98,10 @@ export const CurseCertificate: React.FC<CurseCertificateProps> = ({
     }
   };
 
+  /**
+   * Clean Telegram Share:
+   * Uses short URL with dynamic OG card image preview
+   */
   const handleShareTelegram = () => {
     sound.playClick();
     triggerHaptic('medium');
@@ -106,9 +109,23 @@ export const CurseCertificate: React.FC<CurseCertificateProps> = ({
 
     let formattedText = '';
     if (isDark) {
-      formattedText = `⚖️ ТЕМНАЯ КАНЦЕЛЯРИЯ КАРМЫ\n📜 Официальный приговор гражданину: «${verdict.targetName}»\n\n⚡ Вменяемое деяние:\n«${verdict.actionText}»\n\n🩸 Приговор Канцелярии:\n«${verdict.verdictText}»\n\n🔗 Посмотреть заверенную грамоту:`;
+      formattedText = 
+        `⚖️ ТЕМНАЯ КАНЦЕЛЯРИЯ КАРМЫ\n` +
+        `📜 Официальный приговор гражданину: «${verdict.targetName}»\n\n` +
+        `⚡ Вменяемое деяние:\n` +
+        `«${verdict.actionText}»\n\n` +
+        `🩸 Приговор Канцелярии:\n` +
+        `«${verdict.verdictText}»\n\n` +
+        `🔗 Посмотреть заверенную грамоту:`;
     } else {
-      formattedText = `✨ НЕБЕСНАЯ КАНЦЕЛЯРИЯ БЛАГОДАТИ\n📜 Астральная грамота признания: «${verdict.targetName}»\n\n🌟 Доброе деяние:\n«${verdict.actionText}»\n\n🕊️ Благословение Канцелярии:\n«${verdict.verdictText}»\n\n🔗 Посмотреть сияющую грамоту:`;
+      formattedText = 
+        `✨ НЕБЕСНАЯ КАНЦЕЛЯРИЯ БЛАГОДАТИ\n` +
+        `📜 Астральная грамота признания: «${verdict.targetName}»\n\n` +
+        `🌟 Доброе деяние:\n` +
+        `«${verdict.actionText}»\n\n` +
+        `🕊️ Благословение Канцелярии:\n` +
+        `«${verdict.verdictText}»\n\n` +
+        `🔗 Посмотреть сияющую грамоту:`;
     }
 
     const tgUrl = `https://t.me/share/url?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(formattedText)}`;
