@@ -1,6 +1,7 @@
-import { ShopArtifact, UserKarmaProfile, DecreeVerdict } from '@/types';
+import { ShopArtifact, UserKarmaProfile, GachaPrize } from '@/types';
+import { getRankByExp } from '@/data/ranks';
 
-const STORAGE_KEY = 'proklinator_karma_profile_v2';
+const STORAGE_KEY = 'proklinator_karma_profile_v3';
 
 export const SHOP_ARTIFACTS: ShopArtifact[] = [
   {
@@ -56,11 +57,16 @@ export const SHOP_ARTIFACTS: ShopArtifact[] = [
 ];
 
 export const DEFAULT_PROFILE: UserKarmaProfile = {
-  coins: 80, // initial welcome balance
-  activeShields: 1, // 1 free shield on start!
+  coins: 80,
+  experience: 45,
+  rankLevel: 1,
+  activeShields: 1,
   hasAbsolution: false,
   hasGoldenSeal: false,
   hasDetectiveEye: false,
+  streakDays: 1,
+  squads: ['sq-yandex'],
+  activeSquadId: 'sq-yandex',
   blessingsSent: 0,
   cursesSent: 0,
   receivedDecrees: [],
@@ -77,6 +83,7 @@ export class KarmaStore {
         const saved = localStorage.getItem(STORAGE_KEY);
         if (saved) {
           this.profile = { ...DEFAULT_PROFILE, ...JSON.parse(saved) };
+          this.recalculateRank();
         } else {
           this.save();
         }
@@ -103,13 +110,31 @@ export class KarmaStore {
     this.notify();
   }
 
+  public addExperience(exp: number) {
+    this.profile.experience += exp;
+    this.recalculateRank();
+    this.save();
+    this.notify();
+  }
+
+  private recalculateRank() {
+    const rank = getRankByExp(this.profile.experience);
+    this.profile.rankLevel = rank.level;
+  }
+
   public buyArtifact(artifact: ShopArtifact): { success: boolean; message: string } {
-    if (artifact.cost > 0 && this.profile.coins < artifact.cost) {
+    let finalCost = artifact.cost;
+    // Rank 3 discount: 15% off shields
+    if (artifact.actionType === 'shield' && this.profile.rankLevel >= 3) {
+      finalCost = Math.round(finalCost * 0.85);
+    }
+
+    if (finalCost > 0 && this.profile.coins < finalCost) {
       return { success: false, message: 'Недостаточно Кармоидов 🪙' };
     }
 
-    if (artifact.cost > 0) {
-      this.profile.coins -= artifact.cost;
+    if (finalCost > 0) {
+      this.profile.coins -= finalCost;
     }
 
     switch (artifact.actionType) {
@@ -127,23 +152,60 @@ export class KarmaStore {
         this.profile.hasGoldenSeal = true;
         break;
       case 'coffee':
-        this.profile.coins += 20; // reward for coffee
+        this.profile.coins += 20;
         break;
     }
 
+    this.addExperience(15);
     this.save();
     this.notify();
     return { success: true, message: `Артефакт «${artifact.title}» активирован!` };
   }
 
+  public applyGachaPrize(prize: GachaPrize) {
+    switch (prize.prizeType) {
+      case 'coins':
+        this.profile.coins += prize.amount || 25;
+        break;
+      case 'shield':
+        this.profile.activeShields += prize.amount || 1;
+        break;
+      case 'absolution':
+        this.profile.hasAbsolution = true;
+        this.profile.receivedDecrees = [];
+        break;
+      case 'golden_seal':
+        this.profile.hasGoldenSeal = true;
+        break;
+      case 'coffee':
+        this.profile.coins += 20;
+        break;
+    }
+    this.profile.lastDailySpinDate = new Date().toDateString();
+    this.addExperience(25);
+    this.save();
+    this.notify();
+  }
+
   public recordDecreeSent(realm: 'dark' | 'light') {
     if (realm === 'light') {
       this.profile.blessingsSent += 1;
-      this.addCoins(20); // +20 coins for spreading goodness!
+      this.addCoins(20);
+      this.addExperience(30); // +30 exp for blessings
     } else {
       this.profile.cursesSent += 1;
-      this.addCoins(10); // +10 coins for channeling bureaucracy!
+      this.addCoins(10);
+      this.addExperience(15); // +15 exp for curses
     }
+  }
+
+  public setActiveSquad(squadId: string) {
+    this.profile.activeSquadId = squadId;
+    if (!this.profile.squads.includes(squadId)) {
+      this.profile.squads.push(squadId);
+    }
+    this.save();
+    this.notify();
   }
 
   public subscribe(fn: () => void): () => void {

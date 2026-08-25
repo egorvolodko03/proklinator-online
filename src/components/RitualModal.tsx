@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   X, 
@@ -14,11 +14,12 @@ import {
   Sparkles, 
   Check, 
   AlertCircle,
-  Heart,
-  Send,
-  AtSign
+  Users,
+  Link,
+  AtSign,
+  ShieldCheck
 } from 'lucide-react';
-import { Category, Curse, Blessing, DecreeVerdict, KarmaRealm, SeverityLevel, BlessingLevel } from '@/types';
+import { Category, Curse, Blessing, DecreeVerdict, KarmaRealm, SeverityLevel, BlessingLevel, Squad, SquadMember } from '@/types';
 import { CATEGORY_LABELS, CLERKS, generateCaseNumber, formatDate } from '@/lib/utils';
 import { getRandomCurse } from '@/data/curses';
 import { getRandomBlessing } from '@/data/blessings';
@@ -27,12 +28,15 @@ import { getRandomGoodDeed } from '@/data/goodDeeds';
 import { sound } from '@/lib/audio';
 import { triggerHaptic } from '@/lib/telegram';
 import { karmaStore } from '@/lib/karmaStore';
+import { squadStore } from '@/lib/squadStore';
 import { AstralProcessing } from './AstralProcessing';
 import { CurseCertificate } from './CurseCertificate';
 
 interface RitualModalProps {
   isOpen: boolean;
   realm: KarmaRealm;
+  preselectedMember?: SquadMember | null;
+  preselectedSquad?: Squad | null;
   onClose: () => void;
   onShowToast: (text: string, type?: 'success' | 'info' | 'error') => void;
   onDecreeCreated: (verdict: DecreeVerdict) => void;
@@ -53,26 +57,36 @@ const CATEGORIES: Category[] = [
 export const RitualModal: React.FC<RitualModalProps> = ({
   isOpen,
   realm,
+  preselectedMember = null,
+  preselectedSquad = null,
   onClose,
   onShowToast,
   onDecreeCreated,
 }) => {
   const isDark = realm === 'dark';
 
-  // Wizard step: 1: Target, 2: Reason (Sin/Deed), 3: Verdict (Curse/Blessing), 4: Processing, 5: Certificate
+  // Wizard step: 1: Target, 2: Reason, 3: Verdict, 4: Processing, 5: Certificate
   const [step, setStep] = useState<1 | 2 | 3 | 4 | 5>(1);
 
+  // Delivery mode: 'squad' (100% anonymous inside guild) or 'direct' (link with sender invitation)
+  const [deliveryMode, setDeliveryMode] = useState<'squad' | 'direct'>(
+    preselectedMember ? 'squad' : 'direct'
+  );
+
+  const [squads, setSquads] = useState<Squad[]>(() => squadStore.getSquads());
+  const [selectedSquad, setSelectedSquad] = useState<Squad | null>(
+    preselectedSquad || squads[0] || null
+  );
+
   // Form state
-  const [targetName, setTargetName] = useState('');
-  const [telegramUsername, setTelegramUsername] = useState('');
+  const [targetName, setTargetName] = useState(preselectedMember?.name || '');
+  const [telegramUsername, setTelegramUsername] = useState(preselectedMember?.username || '');
   const [category, setCategory] = useState<Category>('colleague');
   const [reasonText, setReasonText] = useState('');
   
-  // Severity / Blessing tier
   const [severity, setSeverity] = useState<SeverityLevel>('medium');
   const [blessingLevel, setBlessingLevel] = useState<BlessingLevel>('zen');
 
-  // Selected item
   const [selectedCurse, setSelectedCurse] = useState<Curse>(() => getRandomCurse('medium'));
   const [selectedBlessing, setSelectedBlessing] = useState<Blessing>(() => getRandomBlessing('zen'));
   
@@ -80,14 +94,21 @@ export const RitualModal: React.FC<RitualModalProps> = ({
   const [customText, setCustomText] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
 
-  // Generated verdict
   const [verdict, setVerdict] = useState<DecreeVerdict | null>(null);
+
+  useEffect(() => {
+    if (preselectedMember) {
+      setTargetName(preselectedMember.name);
+      setTelegramUsername(preselectedMember.username || '');
+      setDeliveryMode('squad');
+    }
+  }, [preselectedMember]);
 
   if (!isOpen) return null;
 
   const handleNextFromStep1 = () => {
     if (!targetName.trim()) {
-      setErrorMsg('Укажите имя или псевдоним адресата!');
+      setErrorMsg('Укажите имя или выберите коллегу из сквада!');
       sound.playClick();
       triggerHaptic('error');
       return;
@@ -156,6 +177,7 @@ export const RitualModal: React.FC<RitualModalProps> = ({
     const newVerdict: DecreeVerdict = {
       id: Math.random().toString(36).substring(2, 10),
       realm,
+      squadId: deliveryMode === 'squad' ? selectedSquad?.id : undefined,
       caseNumber: generateCaseNumber(),
       targetName: targetName.trim(),
       telegramUsername: telegramUsername.trim().replace(/^@/, '') || undefined,
@@ -178,20 +200,29 @@ export const RitualModal: React.FC<RitualModalProps> = ({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          id: newVerdict.id,
           realm: newVerdict.realm,
+          squadId: newVerdict.squadId,
           targetName: newVerdict.targetName,
           telegramUsername: newVerdict.telegramUsername,
           category: newVerdict.category,
           sin: newVerdict.actionText,
           curseTitle: newVerdict.verdictTitle,
           severity: newVerdict.tier,
+          verdictText: newVerdict.verdictText,
+          clerkSignature: newVerdict.clerkSignature,
         }),
       }).catch((e) => console.log('Background save error:', e));
     } catch {
       // ignore
     }
 
-    // Award user coins
+    // If squad delivery, record inside squad
+    if (deliveryMode === 'squad' && selectedSquad) {
+      squadStore.recordSquadDecree(selectedSquad.id, targetName, realm);
+    }
+
+    // Award user coins & experience
     karmaStore.recordDecreeSent(realm);
   };
 
@@ -253,7 +284,7 @@ export const RitualModal: React.FC<RitualModalProps> = ({
           <div className="border-b border-void-800 bg-void-900/40 px-6 py-3">
             <div className="flex items-center justify-between text-xs font-semibold">
               <span className={step >= 1 ? (isDark ? 'text-inferno-400' : 'text-amber-300') : 'text-zinc-500'}>
-                1. Адресат
+                1. Адресат & Канал
               </span>
               <span className="text-zinc-600">→</span>
               <span className={step >= 2 ? (isDark ? 'text-inferno-400' : 'text-amber-300') : 'text-zinc-500'}>
@@ -261,7 +292,7 @@ export const RitualModal: React.FC<RitualModalProps> = ({
               </span>
               <span className="text-zinc-600">→</span>
               <span className={step >= 3 ? (isDark ? 'text-inferno-400' : 'text-amber-300') : 'text-zinc-500'}>
-                {isDark ? '3. Кара' : '3. Благословение'}
+                {isDark ? '3. Кара' : '3. Благодать'}
               </span>
             </div>
             <div className="mt-2 h-1.5 w-full rounded-full bg-void-800 overflow-hidden">
@@ -293,7 +324,7 @@ export const RitualModal: React.FC<RitualModalProps> = ({
           )}
 
           <AnimatePresence mode="wait">
-            {/* STEP 1: TARGET */}
+            {/* STEP 1: TARGET & 2-STAGE DELIVERY CHANNEL */}
             {step === 1 && (
               <motion.div
                 key="step1"
@@ -303,56 +334,112 @@ export const RitualModal: React.FC<RitualModalProps> = ({
                 transition={{ duration: 0.25 }}
                 className="space-y-5"
               >
-                <div>
-                  <h3 className="font-heading text-lg sm:text-xl font-bold text-white flex items-center gap-2">
-                    <User className={`w-5 h-5 ${isDark ? 'text-inferno-400' : 'text-amber-300'}`} />
-                    {isDark ? 'Кого проклинаем?' : 'Кого благословляем?'}
-                  </h3>
-                  <p className="mt-1 text-xs text-zinc-400 font-sans">
-                    {isDark
-                      ? 'Укажите имя, должность или прозвище человека для кармического протокола.'
-                      : 'Укажите имя друга, коллеги или хорошего человека, которому шлете лучи добра.'}
-                  </p>
-                </div>
-
-                {/* Name Input */}
+                {/* 2-Stage Verification Channel Toggle */}
                 <div>
                   <label className="block text-xs font-semibold text-zinc-300 uppercase tracking-wider mb-2 font-mono">
-                    Имя / Должность:
+                    Канал отправки вердикта:
                   </label>
-                  <input
-                    type="text"
-                    value={targetName}
-                    onChange={(e) => {
-                      setTargetName(e.target.value);
-                      if (errorMsg) setErrorMsg('');
-                    }}
-                    onKeyDown={(e) => e.key === 'Enter' && handleNextFromStep1()}
-                    placeholder="Например: Марина из бухгалтерии, Сосед с 4-го этажа, Друг..."
-                    maxLength={60}
-                    autoFocus
-                    className="w-full rounded-xl border border-void-700 bg-void-900 px-4 py-3.5 text-sm text-white placeholder-zinc-500 focus:border-inferno-500 focus:outline-none transition-all font-sans"
-                  />
-                </div>
+                  <div className="grid grid-cols-2 gap-2.5">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        sound.playClick();
+                        setDeliveryMode('squad');
+                      }}
+                      className={`flex flex-col items-start p-3 rounded-2xl border text-left transition-all ${
+                        deliveryMode === 'squad'
+                          ? 'border-karma-gold bg-karma-gold/15 shadow-glow-gold'
+                          : 'border-void-800 bg-void-900/80 text-zinc-400 hover:border-void-700'
+                      }`}
+                    >
+                      <div className="flex items-center gap-1.5 font-heading text-xs font-bold text-white mb-1">
+                        <Users className="w-4 h-4 text-karma-gold" />
+                        <span>Внутри Сквада</span>
+                      </div>
+                      <span className="text-[10px] text-zinc-400 font-sans leading-tight">
+                        100% Анонимно проверенному коллеге из офиса
+                      </span>
+                    </button>
 
-                {/* Optional Telegram Username Input */}
-                <div>
-                  <label className="block text-xs font-semibold text-zinc-300 uppercase tracking-wider mb-2 font-mono flex items-center justify-between">
-                    <span>Telegram @username (для отправки в бота):</span>
-                    <span className="text-zinc-500 font-normal lowercase">опционально</span>
-                  </label>
-                  <div className="relative">
-                    <AtSign className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
-                    <input
-                      type="text"
-                      value={telegramUsername}
-                      onChange={(e) => setTelegramUsername(e.target.value)}
-                      placeholder="username (без @)"
-                      maxLength={40}
-                      className="w-full rounded-xl border border-void-700 bg-void-900 pl-10 pr-4 py-3 text-sm text-white placeholder-zinc-500 focus:border-astral-500 focus:outline-none font-mono"
-                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        sound.playClick();
+                        setDeliveryMode('direct');
+                      }}
+                      className={`flex flex-col items-start p-3 rounded-2xl border text-left transition-all ${
+                        deliveryMode === 'direct'
+                          ? 'border-karma-gold bg-karma-gold/15 shadow-glow-gold'
+                          : 'border-void-800 bg-void-900/80 text-zinc-400 hover:border-void-700'
+                      }`}
+                    >
+                      <div className="flex items-center gap-1.5 font-heading text-xs font-bold text-white mb-1">
+                        <Link className="w-4 h-4 text-sky-400" />
+                        <span>Прямая ссылка другу</span>
+                      </div>
+                      <span className="text-[10px] text-zinc-400 font-sans leading-tight">
+                        Персональный шеринг в Telegram без спама
+                      </span>
+                    </button>
                   </div>
                 </div>
+
+                {/* If SQUAD mode: Member Selection from Squad */}
+                {deliveryMode === 'squad' && selectedSquad && (
+                  <div>
+                    <label className="block text-xs font-semibold text-zinc-300 uppercase tracking-wider mb-2 font-mono flex items-center justify-between">
+                      <span>Выберите коллегу из «{selectedSquad.name}»:</span>
+                      <span className="text-[10px] text-karma-gold font-sans font-normal">🔒 Анонимно</span>
+                    </label>
+                    <div className="flex flex-wrap gap-2 max-h-36 overflow-y-auto pr-1">
+                      {selectedSquad.members.map((m) => {
+                        const isSelected = targetName === m.name;
+                        return (
+                          <button
+                            key={m.id}
+                            type="button"
+                            onClick={() => {
+                              sound.playClick();
+                              setTargetName(m.name);
+                              setTelegramUsername(m.username || '');
+                              if (errorMsg) setErrorMsg('');
+                            }}
+                            className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-xs font-semibold transition-all ${
+                              isSelected
+                                ? 'border-inferno-500 bg-inferno-500/20 text-white shadow-glow-crimson'
+                                : 'border-void-800 bg-void-900 text-zinc-300 hover:border-void-700'
+                            }`}
+                          >
+                            <span>{m.avatar}</span>
+                            <span>{m.name}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* If DIRECT mode: Manual Name Input */}
+                {deliveryMode === 'direct' && (
+                  <div>
+                    <label className="block text-xs font-semibold text-zinc-300 uppercase tracking-wider mb-2 font-mono">
+                      Имя / Псевдоним адресата:
+                    </label>
+                    <input
+                      type="text"
+                      value={targetName}
+                      onChange={(e) => {
+                        setTargetName(e.target.value);
+                        if (errorMsg) setErrorMsg('');
+                      }}
+                      onKeyDown={(e) => e.key === 'Enter' && handleNextFromStep1()}
+                      placeholder="Например: Марина из бухгалтерии, Сосед с 44-й кв., Друг..."
+                      maxLength={60}
+                      autoFocus
+                      className="w-full rounded-xl border border-void-700 bg-void-900 px-4 py-3.5 text-sm text-white placeholder-zinc-500 focus:border-karma-gold focus:outline-none transition-all font-sans"
+                    />
+                  </div>
+                )}
 
                 {/* Category Chips */}
                 <div>
@@ -404,7 +491,7 @@ export const RitualModal: React.FC<RitualModalProps> = ({
               </motion.div>
             )}
 
-            {/* STEP 2: REASON (Sin / Good Deed) */}
+            {/* STEP 2: REASON */}
             {step === 2 && (
               <motion.div
                 key="step2"
@@ -445,7 +532,7 @@ export const RitualModal: React.FC<RitualModalProps> = ({
                     placeholder={isDark ? 'Например: Игнорит в почте 2 недели...' : 'Например: Скинул правки без правок и угостил кофе...'}
                     rows={3}
                     maxLength={180}
-                    className="w-full rounded-xl border border-void-700 bg-void-900 p-4 text-sm text-white placeholder-zinc-500 focus:border-inferno-500 focus:outline-none transition-all resize-none font-sans"
+                    className="w-full rounded-xl border border-void-700 bg-void-900 p-4 text-sm text-white placeholder-zinc-500 focus:border-karma-gold focus:outline-none transition-all resize-none font-sans"
                   />
                   <div className="mt-1 text-right text-[11px] text-zinc-500 font-mono">
                     {reasonText.length}/180 символов
