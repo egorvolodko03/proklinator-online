@@ -6,28 +6,34 @@ import { ParticleBackground } from '@/components/ParticleBackground';
 import { Navbar } from '@/components/Navbar';
 import { Hero } from '@/components/Hero';
 import { RitualModal } from '@/components/RitualModal';
-import { TipModal } from '@/components/TipModal';
+import { KarmaShopModal } from '@/components/KarmaShopModal';
 import { KarmaDashboard } from '@/components/KarmaDashboard';
 import { CurseCertificate } from '@/components/CurseCertificate';
 import { ToastContainer, ToastMessage } from '@/components/Toast';
 import { INITIAL_FEED } from '@/data/feed';
-import { CurseVerdict, KarmaFeedItem, SeverityLevel, Category } from '@/types';
+import { DecreeVerdict, KarmaFeedItem, KarmaRealm, Category } from '@/types';
 import { sound } from '@/lib/audio';
-import { Flame, Shield, Sparkles, Scale } from 'lucide-react';
+import { initTelegramWebApp, triggerHaptic } from '@/lib/telegram';
+import { Flame, Sun, Sparkles, Scale, Shield } from 'lucide-react';
 
 function MainAppContent() {
   const searchParams = useSearchParams();
 
+  // Duality Realm: 'dark' (Проклинатор) ↔ 'light' (Благословитель)
+  const [realm, setRealm] = useState<KarmaRealm>('dark');
+
   // Modals state
   const [isRitualModalOpen, setIsRitualModalOpen] = useState(false);
-  const [isTipModalOpen, setIsTipModalOpen] = useState(false);
+  const [isShopModalOpen, setIsShopModalOpen] = useState(false);
 
   // Direct shared verdict state (from URL params)
-  const [directVerdict, setDirectVerdict] = useState<CurseVerdict | null>(null);
+  const [directVerdict, setDirectVerdict] = useState<DecreeVerdict | null>(null);
 
   // Live dashboard state
-  const [curses, setCurses] = useState<KarmaFeedItem[]>(INITIAL_FEED);
-  const [totalCount, setTotalCount] = useState<number>(1186);
+  const [curses, setCurses] = useState<KarmaFeedItem[]>(() =>
+    INITIAL_FEED.map((item) => ({ ...item, realm: (item.realm || 'dark') as KarmaRealm }))
+  );
+  const [totalCount, setTotalCount] = useState<number>(1286);
   const [isLoadingFeed, setIsLoadingFeed] = useState<boolean>(false);
 
   // Toast notifications
@@ -45,6 +51,11 @@ function MainAppContent() {
     setToasts((prev) => prev.filter((t) => t.id !== id));
   };
 
+  // Initialize Telegram WebApp on mount
+  useEffect(() => {
+    initTelegramWebApp();
+  }, []);
+
   // Fetch real curses from server API
   const fetchCurses = useCallback(async () => {
     setIsLoadingFeed(true);
@@ -54,11 +65,11 @@ function MainAppContent() {
         const data = await res.json();
         if (data.curses && Array.isArray(data.curses)) {
           setCurses(data.curses);
-          setTotalCount(data.totalCount || 1180 + data.curses.length);
+          setTotalCount(data.totalCount || 1280 + data.curses.length);
         }
       }
     } catch {
-      // fallback to current state
+      // fallback
     } finally {
       setIsLoadingFeed(false);
     }
@@ -71,74 +82,107 @@ function MainAppContent() {
   // Check if opened via share link
   useEffect(() => {
     const cId = searchParams.get('c_id');
+    const paramRealm = (searchParams.get('realm') as KarmaRealm) || 'dark';
     const name = searchParams.get('name');
+    const tg = searchParams.get('tg') || undefined;
     const cat = (searchParams.get('cat') as Category) || 'other';
     const sin = searchParams.get('sin');
     const curse = searchParams.get('curse');
-    const title = searchParams.get('title') || 'Официальная кара';
-    const sev = (searchParams.get('sev') as SeverityLevel) || 'medium';
+    const title = searchParams.get('title') || (paramRealm === 'dark' ? 'Официальная кара' : 'Небесная благодать');
+    const sev = searchParams.get('sev') || 'medium';
 
     if (cId && name && sin && curse) {
+      setRealm(paramRealm);
       setDirectVerdict({
         id: cId,
+        realm: paramRealm,
         caseNumber: `№ КРМ-${cId.toUpperCase()}-Г`,
         targetName: name,
+        telegramUsername: tg,
         category: cat,
-        sin: sin,
-        curseText: curse,
-        curseTitle: title,
-        severity: sev,
+        actionText: sin,
+        verdictText: curse,
+        verdictTitle: title,
+        tier: sev,
         createdAt: new Date().toLocaleDateString('ru-RU', {
           day: '2-digit',
           month: 'long',
           year: 'numeric',
         }),
-        clerkSignature: 'Архивариус Астрального Суда',
-        sealColor: '#ff4d28',
+        clerkSignature: paramRealm === 'dark' ? 'Архивариус Астрального Суда' : 'Хранитель Небесной Благодати',
+        sealColor: paramRealm === 'dark' ? '#ff4d28' : '#fbbf24',
       });
       sound.playVerdictChime();
     }
   }, [searchParams]);
 
-  const handleCurseCreated = (verdict: CurseVerdict) => {
-    // Add to top of live feed
+  const handleDecreeCreated = (verdict: DecreeVerdict) => {
     const newItem: KarmaFeedItem = {
       id: verdict.id,
+      realm: verdict.realm,
       targetName: verdict.targetName,
+      telegramUsername: verdict.telegramUsername,
       category: verdict.category,
-      sin: verdict.sin,
-      curseTitle: verdict.curseTitle,
-      severity: verdict.severity,
+      sin: verdict.actionText,
+      curseTitle: verdict.verdictTitle,
+      severity: verdict.tier as any,
       timeAgo: 'Только что',
     };
-    setCurses((prev) => [newItem, ...prev.slice(0, 49)]);
+    setCurses((prev) => [newItem, ...prev.slice(0, 59)]);
     setTotalCount((prev) => prev + 1);
-    addToast('📜 Печать Канцелярии успешно наложена!', 'success');
+    
+    if (verdict.realm === 'dark') {
+      addToast('📜 Печать Канцелярии наложена! (+10 🪙)', 'success');
+    } else {
+      addToast('✨ Грамота Благодати ниспослана! (+20 🪙)', 'success');
+    }
+  };
+
+  const toggleRealm = () => {
+    setRealm((prev) => (prev === 'dark' ? 'light' : 'dark'));
   };
 
   return (
-    <div className="relative flex min-h-screen flex-col overflow-x-hidden font-sans">
-      {/* Background Particle Canvas */}
-      <ParticleBackground />
+    <div className={`relative flex min-h-screen flex-col overflow-x-hidden font-sans transition-colors duration-700 ${
+      realm === 'dark' ? 'bg-void-950 text-neutral-100' : 'bg-slate-950 text-neutral-100'
+    }`}>
+      {/* Background Particles Canvas */}
+      <ParticleBackground realm={realm} />
 
-      {/* Navbar */}
-      <Navbar onOpenTipModal={() => setIsTipModalOpen(true)} />
+      {/* Navbar with Realm Switcher & Coins */}
+      <Navbar
+        realm={realm}
+        onToggleRealm={toggleRealm}
+        onOpenShop={() => setIsShopModalOpen(true)}
+      />
 
       {/* Main Content Area */}
       <main className="relative z-10 flex-1">
         {directVerdict ? (
-          /* Direct Victim Shared View */
+          /* Direct Shared View */
           <div className="mx-auto max-w-4xl px-4 py-10 text-center">
-            <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-inferno-500/40 bg-inferno-500/10 px-4 py-1.5 text-xs font-semibold text-inferno-300 shadow-glow-crimson animate-pulse font-mono">
+            <div className={`mb-6 inline-flex items-center gap-2 rounded-full border px-4 py-1.5 text-xs font-semibold font-mono animate-pulse ${
+              directVerdict.realm === 'dark'
+                ? 'border-inferno-500/40 bg-inferno-500/10 text-inferno-300 shadow-glow-crimson'
+                : 'border-amber-400/40 bg-amber-400/10 text-amber-300 shadow-glow-gold'
+            }`}>
               <Scale className="w-4 h-4" />
-              <span>Вам вручено официальное кармическое предписание</span>
+              <span>
+                {directVerdict.realm === 'dark'
+                  ? 'Вам вручено официальное кармическое предписание'
+                  : 'Вам направлена астральная грамота благодати'}
+              </span>
             </div>
 
             <h1 className="font-heading text-3xl sm:text-4xl font-extrabold text-white mb-2 tracking-tight">
-              Внимание: На вас наложено проклятие!
+              {directVerdict.realm === 'dark'
+                ? 'Внимание: На вас наложено проклятие!'
+                : 'Внимание: Вам выражена астральная благодарность!'}
             </h1>
             <p className="text-xs sm:text-sm text-zinc-400 max-w-md mx-auto mb-8 font-sans">
-              Темная Канцелярия рассмотрела обращение потерпевшей стороны и вынесла окончательное постановление.
+              {directVerdict.realm === 'dark'
+                ? 'Темная Канцелярия рассмотрела обращение потерпевшей стороны и вынесла окончательное постановление.'
+                : 'Небесная Канцелярия зафиксировала ваш добрый поступок и дарует вечную благодать.'}
             </p>
 
             <CurseCertificate
@@ -148,14 +192,15 @@ function MainAppContent() {
             />
           </div>
         ) : (
-          /* Main Landing Altar */
+          /* Main Dual Landing */
           <>
             <Hero
-              onStartCurse={() => setIsRitualModalOpen(true)}
-              onOpenTipModal={() => setIsTipModalOpen(true)}
+              realm={realm}
+              onStartRitual={() => setIsRitualModalOpen(true)}
+              onOpenShop={() => setIsShopModalOpen(true)}
             />
 
-            {/* Real-Time Karma Dashboard */}
+            {/* Real-Time Dual Karma Dashboard */}
             <KarmaDashboard
               curses={curses}
               totalCount={totalCount}
@@ -170,37 +215,39 @@ function MainAppContent() {
       <footer className="relative z-10 border-t border-void-800 bg-void-950/90 py-8 px-4 text-center">
         <div className="mx-auto max-w-3xl space-y-3">
           <div className="flex items-center justify-center gap-2 text-zinc-400">
-            <Flame className="w-4 h-4 text-inferno-500" />
+            {realm === 'dark' ? <Flame className="w-4 h-4 text-inferno-500" /> : <Sun className="w-4 h-4 text-amber-400" />}
             <span className="font-heading text-xs uppercase tracking-widest text-zinc-300 font-bold">
-              Отдел Кармического Контроля №666
+              {realm === 'dark' ? 'Отдел Кармического Контроля №666' : 'Отдел Небесной Благодати & Добра №777'}
             </span>
           </div>
 
           <p className="text-[11px] text-zinc-500 max-w-xl mx-auto leading-relaxed font-sans">
-            ТЕМНАЯ КАНЦЕЛЯРИЯ СЧИТАЕТ СЛЕДЫ. Используем кармические cookies и обезличенную статистику, чтобы ритуалы вершились быстрее. Сервис носит исключительно развлекательный и юмористический характер.
+            КАРМИЧЕСКАЯ КАНЦЕЛЯРИЯ РАБОТАЕТ В РЕАЛЬНОМ ВРЕМЕНИ. Проект создан для доброго юмора и эмоциональной разгрузки. Никакой реальной магии — только веселье, щиты и анонимные грамоты.
           </p>
 
           <div className="text-[10px] text-zinc-600 font-mono pt-2">
-            © {new Date().getFullYear()} Проклинатор онлайн • Все астральные права защищены печатью бездны.
+            © {new Date().getFullYear()} Проклинатор & Благословитель онлайн • Все права защищены.
           </div>
         </div>
       </footer>
 
-      {/* Modals */}
+      {/* Dual Ritual Modal */}
       <RitualModal
         isOpen={isRitualModalOpen}
+        realm={realm}
         onClose={() => setIsRitualModalOpen(false)}
         onShowToast={addToast}
-        onCurseCreated={handleCurseCreated}
+        onDecreeCreated={handleDecreeCreated}
       />
 
-      <TipModal
-        isOpen={isTipModalOpen}
-        onClose={() => setIsTipModalOpen(false)}
+      {/* Karma Shop Modal */}
+      <KarmaShopModal
+        isOpen={isShopModalOpen}
+        onClose={() => setIsShopModalOpen(false)}
         onShowToast={addToast}
       />
 
-      {/* Toaster */}
+      {/* Toast Notifications */}
       <ToastContainer toasts={toasts} onDismiss={removeToast} />
     </div>
   );
@@ -213,7 +260,7 @@ export default function Home() {
         <div className="flex min-h-screen items-center justify-center bg-void-950 text-zinc-400 font-heading">
           <div className="flex flex-col items-center gap-3">
             <Flame className="w-8 h-8 text-inferno-500 animate-pulse" />
-            <p className="text-sm font-semibold">Связь с Темной Канцелярией...</p>
+            <p className="text-sm font-semibold">Связь с Кармической Канцелярией...</p>
           </div>
         </div>
       }

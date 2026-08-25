@@ -1,4 +1,4 @@
-import { Curse } from '@/types';
+import { Curse, SeverityLevel, Category } from '@/types';
 
 export const CURSES: Curse[] = [
   // 🟢 Легкий дискомфорт (Light)
@@ -248,10 +248,14 @@ export const CURSES: Curse[] = [
   },
 ];
 
-export function getRandomCurse(severity?: string): Curse {
-  const pool = severity 
+export function getRandomCurse(severity?: SeverityLevel | string, category?: Category): Curse {
+  let pool = severity 
     ? CURSES.filter((c) => c.severity === severity)
     : CURSES;
+  if (category) {
+    const matched = pool.filter((c) => c.category === category || c.category === 'all');
+    if (matched.length > 0) pool = matched;
+  }
   const list = pool.length > 0 ? pool : CURSES;
   return list[Math.floor(Math.random() * list.length)];
 }

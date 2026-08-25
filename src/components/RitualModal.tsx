@@ -8,27 +8,34 @@ import {
   ArrowLeft, 
   Dices, 
   Flame, 
+  Sun,
   User, 
   FileText, 
   Sparkles, 
   Check, 
   AlertCircle,
-  Skull,
-  Zap
+  Heart,
+  Send,
+  AtSign
 } from 'lucide-react';
-import { Category, Curse, CurseVerdict, SeverityLevel } from '@/types';
+import { Category, Curse, Blessing, DecreeVerdict, KarmaRealm, SeverityLevel, BlessingLevel } from '@/types';
 import { CATEGORY_LABELS, CLERKS, generateCaseNumber, formatDate } from '@/lib/utils';
-import { CURSES, getRandomCurse } from '@/data/curses';
+import { getRandomCurse } from '@/data/curses';
+import { getRandomBlessing } from '@/data/blessings';
 import { getRandomSin } from '@/data/sins';
+import { getRandomGoodDeed } from '@/data/goodDeeds';
 import { sound } from '@/lib/audio';
+import { triggerHaptic } from '@/lib/telegram';
+import { karmaStore } from '@/lib/karmaStore';
 import { AstralProcessing } from './AstralProcessing';
 import { CurseCertificate } from './CurseCertificate';
 
 interface RitualModalProps {
   isOpen: boolean;
+  realm: KarmaRealm;
   onClose: () => void;
   onShowToast: (text: string, type?: 'success' | 'info' | 'error') => void;
-  onCurseCreated: (verdict: CurseVerdict) => void;
+  onDecreeCreated: (verdict: DecreeVerdict) => void;
 }
 
 const CATEGORIES: Category[] = [
@@ -43,170 +50,166 @@ const CATEGORIES: Category[] = [
   'other',
 ];
 
-const SEVERITY_OPTIONS: {
-  level: SeverityLevel;
-  title: string;
-  badge: string;
-  badgeColor: string;
-  borderColor: string;
-  description: string;
-  example: string;
-}[] = [
-  {
-    level: 'light',
-    title: 'Легкий дискомфорт',
-    badge: '🟢 Уровень 1',
-    badgeColor: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30',
-    borderColor: 'hover:border-emerald-500/50 data-[selected=true]:border-emerald-500',
-    description: 'Мелкие бытовые неурядицы, которые бесят до скрипа зубов.',
-    example: '«Пусть USB-флешка входит только с 3-го раза»',
-  },
-  {
-    level: 'medium',
-    title: 'Офисный ад',
-    badge: '🟡 Уровень 2',
-    badgeColor: 'bg-amber-500/10 text-amber-400 border-amber-500/30',
-    borderColor: 'hover:border-amber-500/50 data-[selected=true]:border-amber-500',
-    description: 'Корпоративные конфузы, провалы в зуме и битые таблицы.',
-    example: '«Пусть микрофон включится, когда жуешь шаурму»',
-  },
-  {
-    level: 'extreme',
-    title: 'Кармический крах',
-    badge: '🔴 Уровень 3',
-    badgeColor: 'bg-rose-500/10 text-rose-400 border-rose-500/30',
-    borderColor: 'hover:border-rose-500/50 data-[selected=true]:border-rose-500',
-    description: 'Максимальное возмездие. Полный экзистенциальный провал.',
-    example: '«Пусть левый носок сползает под пятку через каждые 50 шагов»',
-  },
-];
-
 export const RitualModal: React.FC<RitualModalProps> = ({
   isOpen,
+  realm,
   onClose,
   onShowToast,
-  onCurseCreated,
+  onDecreeCreated,
 }) => {
-  // Wizard state: 1: Target, 2: Sin, 3: Curse, 4: Processing, 5: Certificate
+  const isDark = realm === 'dark';
+
+  // Wizard step: 1: Target, 2: Reason (Sin/Deed), 3: Verdict (Curse/Blessing), 4: Processing, 5: Certificate
   const [step, setStep] = useState<1 | 2 | 3 | 4 | 5>(1);
 
   // Form state
   const [targetName, setTargetName] = useState('');
+  const [telegramUsername, setTelegramUsername] = useState('');
   const [category, setCategory] = useState<Category>('colleague');
-  const [sin, setSin] = useState('');
+  const [reasonText, setReasonText] = useState('');
+  
+  // Severity / Blessing tier
   const [severity, setSeverity] = useState<SeverityLevel>('medium');
+  const [blessingLevel, setBlessingLevel] = useState<BlessingLevel>('zen');
+
+  // Selected item
   const [selectedCurse, setSelectedCurse] = useState<Curse>(() => getRandomCurse('medium'));
-  const [isCustomCurse, setIsCustomCurse] = useState(false);
-  const [customCurseText, setCustomCurseText] = useState('');
+  const [selectedBlessing, setSelectedBlessing] = useState<Blessing>(() => getRandomBlessing('zen'));
+  
+  const [isCustom, setIsCustom] = useState(false);
+  const [customText, setCustomText] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
 
   // Generated verdict
-  const [verdict, setVerdict] = useState<CurseVerdict | null>(null);
+  const [verdict, setVerdict] = useState<DecreeVerdict | null>(null);
 
   if (!isOpen) return null;
 
   const handleNextFromStep1 = () => {
     if (!targetName.trim()) {
-      setErrorMsg('Укажите имя или псевдоним субъекта!');
+      setErrorMsg('Укажите имя или псевдоним адресата!');
       sound.playClick();
+      triggerHaptic('error');
       return;
     }
     setErrorMsg('');
     sound.playClick();
-    if (!sin) {
-      setSin(getRandomSin(category));
+    triggerHaptic('light');
+
+    if (!reasonText) {
+      if (isDark) {
+        setReasonText(getRandomSin(category));
+      } else {
+        setReasonText(getRandomGoodDeed(category));
+      }
     }
     setStep(2);
   };
 
   const handleNextFromStep2 = () => {
-    if (!sin.trim()) {
-      setErrorMsg('Опишите грех обидчика перед канцелярией!');
+    if (!reasonText.trim()) {
+      setErrorMsg(isDark ? 'Опишите грех обидчика!' : 'Опишите доброе деяние человека!');
       sound.playClick();
+      triggerHaptic('error');
       return;
     }
     setErrorMsg('');
     sound.playClick();
+    triggerHaptic('light');
     setStep(3);
   };
 
-  const handleRollRandomSin = () => {
+  const handleRollRandomReason = () => {
     sound.playDiceRoll();
-    const newSin = getRandomSin(category);
-    setSin(newSin);
+    triggerHaptic('medium');
+    if (isDark) {
+      setReasonText(getRandomSin(category));
+    } else {
+      setReasonText(getRandomGoodDeed(category));
+    }
   };
 
-  const handleSelectSeverity = (sev: SeverityLevel) => {
-    sound.playClick();
-    setSeverity(sev);
-    const newCurse = getRandomCurse(sev);
-    setSelectedCurse(newCurse);
-    setIsCustomCurse(false);
-  };
-
-  const handleRollRandomCurse = () => {
+  const handleRollRandomVerdict = () => {
     sound.playDiceRoll();
-    const newCurse = getRandomCurse(severity);
-    setSelectedCurse(newCurse);
-    setIsCustomCurse(false);
+    triggerHaptic('medium');
+    if (isDark) {
+      setSelectedCurse(getRandomCurse(severity, category));
+    } else {
+      setSelectedBlessing(getRandomBlessing(blessingLevel, category));
+    }
+    setIsCustom(false);
   };
 
-  const handleStartSummoning = () => {
-    sound.playClick();
-    const finalCurseText = isCustomCurse && customCurseText.trim() 
-      ? customCurseText 
-      : selectedCurse.description;
-    const finalCurseTitle = isCustomCurse ? 'Персональное заклятие' : selectedCurse.title;
+  const handleStartRitual = () => {
+    if (isDark) sound.playClick();
+    else sound.playCelestialChime();
+    triggerHaptic('heavy');
 
-    const newVerdict: CurseVerdict = {
+    const finalTitle = isCustom
+      ? isDark ? 'Персональное заклятие' : 'Персональное благословение'
+      : isDark ? selectedCurse.title : selectedBlessing.title;
+
+    const finalText = isCustom && customText.trim()
+      ? customText
+      : isDark ? selectedCurse.description : selectedBlessing.description;
+
+    const newVerdict: DecreeVerdict = {
       id: Math.random().toString(36).substring(2, 10),
+      realm,
       caseNumber: generateCaseNumber(),
       targetName: targetName.trim(),
+      telegramUsername: telegramUsername.trim().replace(/^@/, '') || undefined,
       category,
-      sin: sin.trim(),
-      curseText: finalCurseText,
-      curseTitle: finalCurseTitle,
-      severity,
+      actionText: reasonText.trim(),
+      verdictText: finalText,
+      verdictTitle: finalTitle,
+      tier: isDark ? severity : blessingLevel,
       createdAt: formatDate(new Date()),
-      clerkSignature: CLERKS[Math.floor(Math.random() * CLERKS.length)],
-      sealColor: severity === 'extreme' ? '#f43f5e' : severity === 'medium' ? '#f59e0b' : '#10b981',
+      clerkSignature: isDark ? CLERKS[Math.floor(Math.random() * CLERKS.length)] : 'Хранитель Небесной Благодати',
+      sealColor: isDark ? (severity === 'extreme' ? '#f43f5e' : '#f59e0b') : '#fbbf24',
     };
 
     setVerdict(newVerdict);
     setStep(4);
 
-    // Save to global backend registry
+    // Save to global backend
     try {
       fetch('/api/curses', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          realm: newVerdict.realm,
           targetName: newVerdict.targetName,
+          telegramUsername: newVerdict.telegramUsername,
           category: newVerdict.category,
-          sin: newVerdict.sin,
-          curseTitle: newVerdict.curseTitle,
-          severity: newVerdict.severity,
+          sin: newVerdict.actionText,
+          curseTitle: newVerdict.verdictTitle,
+          severity: newVerdict.tier,
         }),
       }).catch((e) => console.log('Background save error:', e));
     } catch {
       // ignore
     }
+
+    // Award user coins
+    karmaStore.recordDecreeSent(realm);
   };
 
   const handleProcessingComplete = () => {
     if (verdict) {
-      onCurseCreated(verdict);
+      onDecreeCreated(verdict);
     }
     setStep(5);
   };
 
   const handleReset = () => {
     setTargetName('');
-    setSin('');
-    setSeverity('medium');
+    setTelegramUsername('');
+    setReasonText('');
     setSelectedCurse(getRandomCurse('medium'));
-    setIsCustomCurse(false);
-    setCustomCurseText('');
+    setSelectedBlessing(getRandomBlessing('zen'));
+    setIsCustom(false);
+    setCustomText('');
     setStep(1);
     setVerdict(null);
   };
@@ -217,14 +220,18 @@ export const RitualModal: React.FC<RitualModalProps> = ({
         initial={{ opacity: 0, scale: 0.95, y: 15 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: 15 }}
-        className="relative w-full max-w-2xl overflow-hidden rounded-3xl border border-void-700 bg-void-950 shadow-altar my-auto"
+        className={`relative w-full max-w-2xl overflow-hidden rounded-3xl border bg-void-950 my-auto ${
+          isDark ? 'border-void-700 shadow-altar' : 'border-amber-500/30 shadow-[0_0_50px_rgba(251,191,36,0.15)]'
+        }`}
       >
-        {/* Modal Top Header with Close */}
+        {/* Top Header */}
         <div className="flex items-center justify-between border-b border-void-800 px-6 py-4">
           <div className="flex items-center gap-2">
-            <Flame className="w-5 h-5 text-inferno-400" />
+            {isDark ? <Flame className="w-5 h-5 text-inferno-400" /> : <Sun className="w-5 h-5 text-amber-300" />}
             <span className="font-heading text-sm sm:text-base font-bold text-zinc-100">
-              {step === 5 ? 'Официальный Приговор Канцелярии' : 'Обряд Наложения Проклятия'}
+              {step === 5
+                ? isDark ? 'Официальный Приговор Канцелярии' : 'Грамота Астральной Благодати'
+                : isDark ? 'Обряд Наложения Проклятия' : 'Обряд Ниспослания Благодати'}
             </span>
           </div>
 
@@ -234,33 +241,36 @@ export const RitualModal: React.FC<RitualModalProps> = ({
                 sound.playClick();
                 onClose();
               }}
-              className="flex h-8 w-8 items-center justify-center rounded-lg border border-void-700 bg-void-900 text-zinc-400 hover:text-white hover:border-void-600 active:scale-90"
-              aria-label="Закрыть"
+              className="flex h-8 w-8 items-center justify-center rounded-lg border border-void-700 bg-void-900 text-zinc-400 hover:text-white"
             >
               <X className="w-4 h-4" />
             </button>
           )}
         </div>
 
-        {/* Stepper Progress Bar (for Steps 1-3) */}
+        {/* Stepper Progress */}
         {step <= 3 && (
           <div className="border-b border-void-800 bg-void-900/40 px-6 py-3">
             <div className="flex items-center justify-between text-xs font-semibold">
-              <span className={step >= 1 ? 'text-inferno-400' : 'text-zinc-500'}>
-                1. Жертва
+              <span className={step >= 1 ? (isDark ? 'text-inferno-400' : 'text-amber-300') : 'text-zinc-500'}>
+                1. Адресат
               </span>
               <span className="text-zinc-600">→</span>
-              <span className={step >= 2 ? 'text-inferno-400' : 'text-zinc-500'}>
-                2. Грех
+              <span className={step >= 2 ? (isDark ? 'text-inferno-400' : 'text-amber-300') : 'text-zinc-500'}>
+                {isDark ? '2. Грех' : '2. Подвиг'}
               </span>
               <span className="text-zinc-600">→</span>
-              <span className={step >= 3 ? 'text-inferno-400' : 'text-zinc-500'}>
-                3. Кара
+              <span className={step >= 3 ? (isDark ? 'text-inferno-400' : 'text-amber-300') : 'text-zinc-500'}>
+                {isDark ? '3. Кара' : '3. Благословение'}
               </span>
             </div>
             <div className="mt-2 h-1.5 w-full rounded-full bg-void-800 overflow-hidden">
               <motion.div
-                className="h-full bg-gradient-to-r from-inferno-600 to-astral-500"
+                className={`h-full ${
+                  isDark
+                    ? 'bg-gradient-to-r from-inferno-600 to-astral-500'
+                    : 'bg-gradient-to-r from-amber-500 via-emerald-400 to-sky-400'
+                }`}
                 initial={false}
                 animate={{ width: `${(step / 3) * 100}%` }}
                 transition={{ duration: 0.3 }}
@@ -291,22 +301,24 @@ export const RitualModal: React.FC<RitualModalProps> = ({
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -20 }}
                 transition={{ duration: 0.25 }}
-                className="space-y-6"
+                className="space-y-5"
               >
                 <div>
                   <h3 className="font-heading text-lg sm:text-xl font-bold text-white flex items-center gap-2">
-                    <User className="w-5 h-5 text-inferno-400" />
-                    Кого проклинаем?
+                    <User className={`w-5 h-5 ${isDark ? 'text-inferno-400' : 'text-amber-300'}`} />
+                    {isDark ? 'Кого проклинаем?' : 'Кого благословляем?'}
                   </h3>
-                  <p className="mt-1 text-xs text-zinc-400">
-                    Укажите имя, должность или прозвище человека, который пошатнул ваше душевное равновесие.
+                  <p className="mt-1 text-xs text-zinc-400 font-sans">
+                    {isDark
+                      ? 'Укажите имя, должность или прозвище человека для кармического протокола.'
+                      : 'Укажите имя друга, коллеги или хорошего человека, которому шлете лучи добра.'}
                   </p>
                 </div>
 
                 {/* Name Input */}
                 <div>
                   <label className="block text-xs font-semibold text-zinc-300 uppercase tracking-wider mb-2 font-mono">
-                    Имя / Псевдоним субъекта:
+                    Имя / Должность:
                   </label>
                   <input
                     type="text"
@@ -316,17 +328,36 @@ export const RitualModal: React.FC<RitualModalProps> = ({
                       if (errorMsg) setErrorMsg('');
                     }}
                     onKeyDown={(e) => e.key === 'Enter' && handleNextFromStep1()}
-                    placeholder="Например: Марина из бухгалтерии, Сосед с дрелью, Бывший..."
+                    placeholder="Например: Марина из бухгалтерии, Сосед с 4-го этажа, Друг..."
                     maxLength={60}
                     autoFocus
-                    className="w-full rounded-xl border border-void-700 bg-void-900 px-4 py-3.5 text-sm text-white placeholder-zinc-500 focus:border-inferno-500 focus:outline-none focus:ring-2 focus:ring-inferno-500/20 transition-all font-sans"
+                    className="w-full rounded-xl border border-void-700 bg-void-900 px-4 py-3.5 text-sm text-white placeholder-zinc-500 focus:border-inferno-500 focus:outline-none transition-all font-sans"
                   />
                 </div>
 
-                {/* Quick Category Chips */}
+                {/* Optional Telegram Username Input */}
+                <div>
+                  <label className="block text-xs font-semibold text-zinc-300 uppercase tracking-wider mb-2 font-mono flex items-center justify-between">
+                    <span>Telegram @username (для отправки в бота):</span>
+                    <span className="text-zinc-500 font-normal lowercase">опционально</span>
+                  </label>
+                  <div className="relative">
+                    <AtSign className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
+                    <input
+                      type="text"
+                      value={telegramUsername}
+                      onChange={(e) => setTelegramUsername(e.target.value)}
+                      placeholder="username (без @)"
+                      maxLength={40}
+                      className="w-full rounded-xl border border-void-700 bg-void-900 pl-10 pr-4 py-3 text-sm text-white placeholder-zinc-500 focus:border-astral-500 focus:outline-none font-mono"
+                    />
+                  </div>
+                </div>
+
+                {/* Category Chips */}
                 <div>
                   <label className="block text-xs font-semibold text-zinc-300 uppercase tracking-wider mb-2 font-mono">
-                    Категория нарушителя:
+                    Категория:
                   </label>
                   <div className="flex flex-wrap gap-2">
                     {CATEGORIES.map((cat) => {
@@ -342,7 +373,9 @@ export const RitualModal: React.FC<RitualModalProps> = ({
                           }}
                           className={`flex items-center gap-1.5 rounded-xl border px-3 py-2 text-xs font-semibold transition-all ${
                             isSelected
-                              ? 'border-inferno-500 bg-inferno-500/15 text-inferno-300 shadow-glow-crimson'
+                              ? isDark
+                                ? 'border-inferno-500 bg-inferno-500/15 text-inferno-300 shadow-glow-crimson'
+                                : 'border-amber-400 bg-amber-500/15 text-amber-300 shadow-glow-gold'
                               : 'border-void-700 bg-void-900 text-zinc-400 hover:border-void-600 hover:text-zinc-200'
                           }`}
                         >
@@ -358,16 +391,20 @@ export const RitualModal: React.FC<RitualModalProps> = ({
                 <div className="pt-2 flex justify-end">
                   <button
                     onClick={handleNextFromStep1}
-                    className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-inferno-600 to-inferno-500 px-6 py-3 text-sm font-bold text-white shadow-glow-crimson hover:scale-105 active:scale-95 transition-all font-heading"
+                    className={`flex items-center gap-2 rounded-xl px-6 py-3 text-sm font-bold text-white transition-all font-heading hover:scale-105 active:scale-95 ${
+                      isDark
+                        ? 'bg-gradient-to-r from-inferno-600 to-inferno-500 shadow-glow-crimson'
+                        : 'bg-gradient-to-r from-amber-500 to-emerald-500 shadow-glow-gold text-void-950'
+                    }`}
                   >
-                    <span>Далее: Зафиксировать грех</span>
+                    <span>Далее: {isDark ? 'Зафиксировать грех' : 'Указать доброе дело'}</span>
                     <ArrowRight className="w-4 h-4" />
                   </button>
                 </div>
               </motion.div>
             )}
 
-            {/* STEP 2: SIN */}
+            {/* STEP 2: REASON (Sin / Good Deed) */}
             {step === 2 && (
               <motion.div
                 key="step2"
@@ -375,73 +412,43 @@ export const RitualModal: React.FC<RitualModalProps> = ({
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -20 }}
                 transition={{ duration: 0.25 }}
-                className="space-y-6"
+                className="space-y-5"
               >
                 <div className="flex items-center justify-between">
                   <div>
                     <h3 className="font-heading text-lg sm:text-xl font-bold text-white flex items-center gap-2">
-                      <FileText className="w-5 h-5 text-inferno-400" />
-                      Что он(а) сделал(а)?
+                      <FileText className={`w-5 h-5 ${isDark ? 'text-inferno-400' : 'text-amber-300'}`} />
+                      {isDark ? 'Что он(а) натворил(а)?' : 'За что благодарим?'}
                     </h3>
-                    <p className="mt-1 text-xs text-zinc-400">
-                      Сформулируйте суть деяния для протокола канцелярии.
+                    <p className="mt-1 text-xs text-zinc-400 font-sans">
+                      {isDark ? 'Сформулируйте суть деяния для протокола.' : 'Опишите добрый поступок или приятный момент.'}
                     </p>
                   </div>
 
-                  {/* Random Sin Dice */}
                   <button
-                    onClick={handleRollRandomSin}
-                    className="flex items-center gap-1.5 rounded-xl border border-void-700 bg-void-900 px-3 py-2 text-xs font-semibold text-astral-400 hover:border-astral-500 hover:bg-void-850 hover:shadow-glow-violet active:scale-95 transition-all"
-                    title="Случайный грех"
+                    onClick={handleRollRandomReason}
+                    className="flex items-center gap-1.5 rounded-xl border border-void-700 bg-void-900 px-3 py-2 text-xs font-semibold text-astral-400 hover:border-astral-500 hover:bg-void-850 active:scale-95 transition-all"
                   >
                     <Dices className="w-4 h-4" />
-                    <span>Случайный грех</span>
+                    <span>Случайный вариант</span>
                   </button>
                 </div>
 
-                {/* Sin Textarea */}
+                {/* Reason Textarea */}
                 <div>
                   <textarea
-                    value={sin}
+                    value={reasonText}
                     onChange={(e) => {
-                      setSin(e.target.value);
+                      setReasonText(e.target.value);
                       if (errorMsg) setErrorMsg('');
                     }}
-                    placeholder="Например: Игнорит в почте 2 недели, а потом пишет 'актуально?'..."
+                    placeholder={isDark ? 'Например: Игнорит в почте 2 недели...' : 'Например: Скинул правки без правок и угостил кофе...'}
                     rows={3}
                     maxLength={180}
-                    className="w-full rounded-xl border border-void-700 bg-void-900 p-4 text-sm text-white placeholder-zinc-500 focus:border-inferno-500 focus:outline-none focus:ring-2 focus:ring-inferno-500/20 transition-all resize-none font-sans"
+                    className="w-full rounded-xl border border-void-700 bg-void-900 p-4 text-sm text-white placeholder-zinc-500 focus:border-inferno-500 focus:outline-none transition-all resize-none font-sans"
                   />
                   <div className="mt-1 text-right text-[11px] text-zinc-500 font-mono">
-                    {sin.length}/180 символов
-                  </div>
-                </div>
-
-                {/* Popular Quick Sin Suggestions */}
-                <div>
-                  <label className="block text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-2 font-mono">
-                    Популярные грехи из протоколов:
-                  </label>
-                  <div className="space-y-1.5">
-                    {[
-                      'Игнорит в почте 2 недели и потом пишет "актуально?"',
-                      'Записывает 7-минутные голосовые без темы и пауз',
-                      'Сверлит несущую стену в воскресенье ровно в 8:00 утра',
-                      'Ставит созвон на 18:30 в пятницу со словами "на 5 минут"',
-                    ].map((s, idx) => (
-                      <button
-                        key={idx}
-                        type="button"
-                        onClick={() => {
-                          sound.playClick();
-                          setSin(s);
-                          setErrorMsg('');
-                        }}
-                        className="block w-full text-left rounded-lg border border-void-800 bg-void-900/60 px-3 py-2 text-xs text-zinc-300 hover:border-inferno-500/40 hover:bg-void-850 hover:text-white transition-all font-sans"
-                      >
-                        ⚡ «{s}»
-                      </button>
-                    ))}
+                    {reasonText.length}/180 символов
                   </div>
                 </div>
 
@@ -452,7 +459,7 @@ export const RitualModal: React.FC<RitualModalProps> = ({
                       sound.playClick();
                       setStep(1);
                     }}
-                    className="flex items-center gap-1.5 rounded-xl border border-void-700 bg-void-900 px-4 py-3 text-xs font-semibold text-zinc-400 hover:text-white transition-all"
+                    className="flex items-center gap-1.5 rounded-xl border border-void-700 bg-void-900 px-4 py-3 text-xs font-semibold text-zinc-400 hover:text-white"
                   >
                     <ArrowLeft className="w-4 h-4" />
                     <span>Назад</span>
@@ -460,16 +467,20 @@ export const RitualModal: React.FC<RitualModalProps> = ({
 
                   <button
                     onClick={handleNextFromStep2}
-                    className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-inferno-600 to-inferno-500 px-6 py-3 text-sm font-bold text-white shadow-glow-crimson hover:scale-105 active:scale-95 transition-all font-heading"
+                    className={`flex items-center gap-2 rounded-xl px-6 py-3 text-sm font-bold transition-all font-heading hover:scale-105 active:scale-95 ${
+                      isDark
+                        ? 'bg-gradient-to-r from-inferno-600 to-inferno-500 text-white shadow-glow-crimson'
+                        : 'bg-gradient-to-r from-amber-500 to-emerald-500 text-void-950 shadow-glow-gold'
+                    }`}
                   >
-                    <span>Далее: Выбрать кару</span>
+                    <span>Далее: {isDark ? 'Выбрать кару' : 'Выбрать благословение'}</span>
                     <ArrowRight className="w-4 h-4" />
                   </button>
                 </div>
               </motion.div>
             )}
 
-            {/* STEP 3: THE CURSE */}
+            {/* STEP 3: VERDICT SELECTION */}
             {step === 3 && (
               <motion.div
                 key="step3"
@@ -477,97 +488,62 @@ export const RitualModal: React.FC<RitualModalProps> = ({
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -20 }}
                 transition={{ duration: 0.25 }}
-                className="space-y-6"
+                className="space-y-5"
               >
                 <div>
                   <h3 className="font-heading text-lg sm:text-xl font-bold text-white flex items-center gap-2">
-                    <Sparkles className="w-5 h-5 text-karma-gold" />
-                    Какую кару выберем?
+                    <Sparkles className={`w-5 h-5 ${isDark ? 'text-karma-gold' : 'text-amber-300'}`} />
+                    {isDark ? 'Какую кару определим?' : 'Какое благословение ниспошлем?'}
                   </h3>
-                  <p className="mt-1 text-xs text-zinc-400">
-                    Выберите степень кармической строгости и определите приговор.
-                  </p>
                 </div>
 
-                {/* 3 Severity Tiers */}
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-                  {SEVERITY_OPTIONS.map((opt) => {
-                    const isSelected = severity === opt.level;
-                    return (
-                      <div
-                        key={opt.level}
-                        data-selected={isSelected}
-                        onClick={() => handleSelectSeverity(opt.level)}
-                        className={`cursor-pointer rounded-2xl border-2 p-3.5 transition-all ${
-                          isSelected
-                            ? 'border-inferno-500 bg-inferno-500/10 shadow-glow-crimson'
-                            : 'border-void-800 bg-void-900 hover:border-void-700'
-                        }`}
-                      >
-                        <div className="flex items-center justify-between mb-2">
-                          <span className={`rounded-full border px-2 py-0.5 text-[10px] font-bold ${opt.badgeColor}`}>
-                            {opt.badge}
-                          </span>
-                          {isSelected && <Check className="w-4 h-4 text-inferno-400" />}
-                        </div>
-                        <h4 className="font-heading text-xs font-bold text-white mb-1">
-                          {opt.title}
-                        </h4>
-                        <p className="text-[11px] text-zinc-400 leading-snug font-normal">
-                          {opt.description}
-                        </p>
-                      </div>
-                    );
-                  })}
-                </div>
-
-                {/* Current Selected Curse Card */}
+                {/* Selected Item Box */}
                 <div className="rounded-2xl border border-void-700 bg-void-900 p-4 relative overflow-hidden">
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs font-bold uppercase tracking-wider text-inferno-400 flex items-center gap-1.5 font-heading">
-                      <span>{selectedCurse.icon}</span>
-                      <span>{selectedCurse.title}</span>
+                    <span className={`text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 font-heading ${
+                      isDark ? 'text-inferno-400' : 'text-amber-300'
+                    }`}>
+                      <span>{isDark ? selectedCurse.icon : selectedBlessing.icon}</span>
+                      <span>{isDark ? selectedCurse.title : selectedBlessing.title}</span>
                     </span>
 
-                    {/* Random Roll Button */}
                     <button
-                      onClick={handleRollRandomCurse}
-                      className="flex items-center gap-1.5 rounded-lg border border-void-700 bg-void-850 px-2.5 py-1 text-xs font-semibold text-zinc-300 hover:border-astral-500 hover:text-white hover:shadow-glow-violet active:scale-95 transition-all"
+                      onClick={handleRollRandomVerdict}
+                      className="flex items-center gap-1.5 rounded-lg border border-void-700 bg-void-850 px-2.5 py-1 text-xs font-semibold text-zinc-300 hover:border-astral-500 hover:text-white transition-all"
                     >
                       <Dices className="w-3.5 h-3.5 text-astral-400" />
-                      <span>🎲 Случайная кара</span>
+                      <span>Случайный выбор</span>
                     </button>
                   </div>
 
-                  {!isCustomCurse ? (
+                  {!isCustom ? (
                     <p className="text-sm font-medium text-zinc-100 italic leading-relaxed font-sans">
-                      «{selectedCurse.description}»
+                      «{isDark ? selectedCurse.description : selectedBlessing.description}»
                     </p>
                   ) : (
                     <textarea
-                      value={customCurseText}
-                      onChange={(e) => setCustomCurseText(e.target.value)}
-                      placeholder="Напишите собственную абсурдную кару..."
+                      value={customText}
+                      onChange={(e) => setCustomText(e.target.value)}
+                      placeholder="Напишите собственный текст..."
                       rows={2}
                       maxLength={140}
-                      className="w-full rounded-lg border border-void-700 bg-void-950 p-2.5 text-xs text-white placeholder-zinc-500 focus:border-inferno-500 focus:outline-none font-sans"
+                      className="w-full rounded-lg border border-void-700 bg-void-950 p-2.5 text-xs text-white placeholder-zinc-500 focus:outline-none font-sans"
                     />
                   )}
 
-                  {/* Toggle Custom Curse */}
                   <div className="mt-3 pt-2 border-t border-void-800 flex justify-end">
                     <button
                       type="button"
                       onClick={() => {
                         sound.playClick();
-                        setIsCustomCurse(!isCustomCurse);
-                        if (!isCustomCurse && !customCurseText) {
-                          setCustomCurseText(selectedCurse.description);
+                        setIsCustom(!isCustom);
+                        if (!isCustom && !customText) {
+                          setCustomText(isDark ? selectedCurse.description : selectedBlessing.description);
                         }
                       }}
-                      className="text-[11px] text-zinc-400 hover:text-astral-400 underline transition-colors font-sans"
+                      className="text-[11px] text-zinc-400 hover:text-astral-400 underline font-sans"
                     >
-                      {isCustomCurse ? 'Вернуться к готовым вариантам' : 'Сформулировать свою кару вручную'}
+                      {isCustom ? 'Вернуться к готовым вариантам' : 'Сформулировать вручную'}
                     </button>
                   </div>
                 </div>
@@ -579,18 +555,22 @@ export const RitualModal: React.FC<RitualModalProps> = ({
                       sound.playClick();
                       setStep(2);
                     }}
-                    className="flex items-center gap-1.5 rounded-xl border border-void-700 bg-void-900 px-4 py-3 text-xs font-semibold text-zinc-400 hover:text-white transition-all"
+                    className="flex items-center gap-1.5 rounded-xl border border-void-700 bg-void-900 px-4 py-3 text-xs font-semibold text-zinc-400 hover:text-white"
                   >
                     <ArrowLeft className="w-4 h-4" />
                     <span>Назад</span>
                   </button>
 
                   <button
-                    onClick={handleStartSummoning}
-                    className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-inferno-600 via-inferno-500 to-astral-600 px-7 py-3 text-sm font-bold text-white shadow-glow-crimson hover:scale-105 active:scale-95 transition-all font-heading"
+                    onClick={handleStartRitual}
+                    className={`flex items-center gap-2 rounded-xl px-7 py-3 text-sm font-bold transition-all font-heading hover:scale-105 active:scale-95 ${
+                      isDark
+                        ? 'bg-gradient-to-r from-inferno-600 via-inferno-500 to-astral-600 text-white shadow-glow-crimson'
+                        : 'bg-gradient-to-r from-amber-400 via-emerald-400 to-sky-400 text-void-950 shadow-glow-gold'
+                    }`}
                   >
-                    <Flame className="w-4 h-4 text-yellow-300" />
-                    <span>Наложить печать канцелярии</span>
+                    {isDark ? <Flame className="w-4 h-4 text-yellow-300" /> : <Sun className="w-4 h-4" />}
+                    <span>{isDark ? 'Наложить печать канцелярии' : 'Утвердить печать благодати'}</span>
                   </button>
                 </div>
               </motion.div>
