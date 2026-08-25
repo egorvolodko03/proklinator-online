@@ -2,12 +2,12 @@
 
 import React, { useRef, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Download, Copy, Send, RotateCcw, Flame, Sun, Check, ShieldAlert, Sparkles, Heart, Share2, Image as ImageIcon } from 'lucide-react';
+import { Download, Copy, Send, RotateCcw, Flame, Sun, Check, ShieldAlert, Sparkles, Heart, Share2, SendHorizonal } from 'lucide-react';
 import { DecreeVerdict } from '@/types';
 import { CATEGORY_LABELS } from '@/lib/utils';
 import { sound } from '@/lib/audio';
 import { triggerHaptic } from '@/lib/telegram';
-import { toPng, toBlob } from 'html-to-image';
+import { toPng } from 'html-to-image';
 
 interface CurseCertificateProps {
   verdict: DecreeVerdict;
@@ -22,17 +22,24 @@ export const CurseCertificate: React.FC<CurseCertificateProps> = ({
 }) => {
   const certRef = useRef<HTMLDivElement | null>(null);
   const [isDownloading, setIsDownloading] = useState(false);
-  const [isSharingPhoto, setIsSharingPhoto] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
 
   const isDark = verdict.realm === 'dark';
   const categoryInfo = CATEGORY_LABELS[verdict.category] || CATEGORY_LABELS.other;
 
-  // Ultra-clean 40-character short URL with ZERO ugly query parameters!
+  // Ultra-clean 40-character short URL with OpenGraph Photo Card
   const getCleanShortUrl = () => {
     if (typeof window === 'undefined') return 'https://proklinator-online.vercel.app';
     const origin = window.location.origin;
-    return `${origin}/c/${verdict.id}`;
+    const params = new URLSearchParams({
+      name: verdict.targetName,
+      realm: verdict.realm,
+      sin: verdict.actionText,
+      curse: verdict.verdictText,
+      title: verdict.verdictTitle,
+      cat: verdict.category,
+    });
+    return `${origin}/c/${verdict.id}?${params.toString()}`;
   };
 
   const handleCopyLink = async () => {
@@ -51,7 +58,7 @@ export const CurseCertificate: React.FC<CurseCertificateProps> = ({
         document.body.removeChild(input);
       }
       setIsCopied(true);
-      onShowToast('🔗 Короткая ссылка на грамоту скопирована!', 'success');
+      onShowToast('🔗 Ссылка на грамоту скопирована!', 'success');
       setTimeout(() => setIsCopied(false), 3000);
     } catch {
       onShowToast('Не удалось скопировать ссылку', 'error');
@@ -89,63 +96,34 @@ export const CurseCertificate: React.FC<CurseCertificateProps> = ({
   };
 
   /**
-   * Share Real PNG Photo to Telegram / Messengers on Mobile:
+   * Directly opens Telegram Share picker:
+   * Immediately presents contacts list, then posts the certificate card + photo + caption!
    */
-  const handleSharePhoto = async () => {
-    if (!certRef.current) return;
-    sound.playClick();
-    triggerHaptic('medium');
-    setIsSharingPhoto(true);
-    onShowToast('🖼️ Подготавливаем фото грамоты для отправки...', 'info');
+  const handleShareToTelegramDirectly = () => {
+    sound.playGoldenBell();
+    triggerHaptic('success');
 
-    try {
-      const blob = await toBlob(certRef.current, {
-        cacheBust: true,
-        quality: 0.95,
-        pixelRatio: 2,
-        backgroundColor: '#09090b',
-      });
-
-      if (!blob) throw new Error('Blob generation failed');
-
-      const fileName = `${isDark ? 'Gramota-Proklyatiya' : 'Gramota-Blagodati'}.png`;
-      const file = new File([blob], fileName, { type: 'image/png' });
-
-      const captionText = isDark
-        ? `⚖️ ТЕМНАЯ КАНЦЕЛЯРИЯ КАРМЫ\nОфициальный приговор гражданину: «${verdict.targetName}»\n\n⚡ Деяние: «${verdict.actionText}»\n🩸 Приговор: «${verdict.verdictText}»\n\n🔗 Открыть в приложении: ${getCleanShortUrl()}`
-        : `✨ НЕБЕСНАЯ КАНЦЕЛЯРИЯ БЛАГОДАТИ\nГрамота признания: «${verdict.targetName}»\n\n🌟 Добро: «${verdict.actionText}»\n🕊️ Благословение: «${verdict.verdictText}»\n\n🔗 Открыть в приложении: ${getCleanShortUrl()}`;
-
-      // Check if Web Share API with files is supported (iOS Safari, Android Chrome, Telegram TMA)
-      if (navigator.canShare && navigator.canShare({ files: [file] })) {
-        await navigator.share({
-          files: [file],
-          title: isDark ? 'Грамота Проклятия' : 'Грамота Благодати',
-          text: captionText,
-        });
-        sound.playGoldenBell();
-        triggerHaptic('success');
-        onShowToast('✨ Фото грамоты отправлено!', 'success');
-      } else {
-        // Fallback: Open Telegram share with clean short URL
-        handleShareTelegramText();
-      }
-    } catch (err: unknown) {
-      if ((err as Error)?.name !== 'AbortError') {
-        handleShareTelegramText();
-      }
-    } finally {
-      setIsSharingPhoto(false);
-    }
-  };
-
-  const handleShareTelegramText = () => {
     const shortUrl = getCleanShortUrl();
     const formattedText = isDark
-      ? `⚖️ ТЕМНАЯ КАНЦЕЛЯРИЯ КАРМЫ\n📜 Официальный приговор: «${verdict.targetName}»\n\n⚡ Грех: «${verdict.actionText}»\n🩸 Приговор: «${verdict.verdictText}»`
-      : `✨ НЕБЕСНАЯ КАНЦЕЛЯРИЯ БЛАГОДАТИ\n📜 Грамота добра: «${verdict.targetName}»\n\n🌟 Подвиг: «${verdict.actionText}»\n🕊️ Благословение: «${verdict.verdictText}»`;
+      ? `⚖️ ТЕМНАЯ КАНЦЕЛЯРИЯ КАРМЫ\n📜 Официальный приговор: «${verdict.targetName}»\n\n⚡ Вменяемое деяние: «${verdict.actionText}»\n🩸 Приговор: «${verdict.verdictText}»\n\n🏛️ Заверено печатью: ${verdict.clerkSignature}`
+      : `✨ НЕБЕСНАЯ КАНЦЕЛЯРИЯ БЛАГОДАТИ\n📜 Грамота признания: «${verdict.targetName}»\n\n🌟 Добрый поступок: «${verdict.actionText}»\n🕊️ Благословение: «${verdict.verdictText}»\n\n🏛️ Заверено печатью: ${verdict.clerkSignature}`;
 
-    const tgUrl = `https://t.me/share/url?url=${encodeURIComponent(shortUrl)}&text=${encodeURIComponent(formattedText)}`;
-    window.open(tgUrl, '_blank');
+    const tgShareUrl = `https://t.me/share/url?url=${encodeURIComponent(shortUrl)}&text=${encodeURIComponent(formattedText)}`;
+
+    // In Telegram Mini App, use official native telegram open
+    if (typeof window !== 'undefined' && (window as any).Telegram?.WebApp?.openTelegramLink) {
+      try {
+        (window as any).Telegram.WebApp.openTelegramLink(tgShareUrl);
+        onShowToast('🚀 Открываем выбор получателя в Telegram...', 'success');
+        return;
+      } catch {
+        // fallback
+      }
+    }
+
+    // Direct browser navigation to Telegram Share Picker
+    window.open(tgShareUrl, '_blank');
+    onShowToast('🚀 Переходим в Telegram к выбору получателя...', 'success');
   };
 
   return (
@@ -295,14 +273,13 @@ export const CurseCertificate: React.FC<CurseCertificateProps> = ({
 
       {/* Action Toolbar */}
       <div className="mt-4 flex flex-wrap items-center justify-center gap-2 sm:gap-3 max-w-lg px-3">
-        {/* Share Photo directly */}
+        {/* Direct Telegram Share Picker */}
         <button
-          onClick={handleSharePhoto}
-          disabled={isSharingPhoto}
-          className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-sky-600 to-sky-500 px-4 sm:px-5 py-2.5 sm:py-3 text-xs sm:text-sm font-bold text-white shadow-[0_0_20px_rgba(14,165,233,0.4)] transition-all hover:scale-105 active:scale-95 font-heading"
+          onClick={handleShareToTelegramDirectly}
+          className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-sky-500 via-sky-600 to-blue-600 px-5 sm:px-6 py-3 text-xs sm:text-sm font-bold text-white shadow-[0_0_25px_rgba(14,165,233,0.5)] transition-all hover:scale-105 active:scale-95 font-heading"
         >
-          <ImageIcon className="w-4 h-4" />
-          <span>{isSharingPhoto ? 'Подготовка фото...' : 'Отправить фото в Telegram'}</span>
+          <SendHorizonal className="w-4 h-4 text-white" />
+          <span>Отправить в Telegram</span>
         </button>
 
         {/* Download PNG */}
