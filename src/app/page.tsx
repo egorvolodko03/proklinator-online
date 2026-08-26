@@ -49,6 +49,7 @@ function AppContent() {
   // Initialize Telegram Mini App and handle incoming invite/decree URLs
   useEffect(() => {
     initTelegramMiniApp();
+    karmaStore.checkTelegramAutoAuth();
 
     // Handle deep link tab routing from bot buttons
     const tab = searchParams.get('tab');

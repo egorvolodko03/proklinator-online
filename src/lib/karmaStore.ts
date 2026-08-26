@@ -2,7 +2,7 @@ import { ShopArtifact, UserKarmaProfile, GachaPrize, TelegramUserData } from '@/
 import { getRankByExp } from '@/data/ranks';
 import { getTelegramUser, isTelegramWebApp } from '@/lib/telegram';
 
-const STORAGE_KEY = 'proklinator_karma_profile_v3';
+const STORAGE_KEY = 'proklinator_karma_profile_v4_clean';
 
 export const SHOP_ARTIFACTS: ShopArtifact[] = [
   {
@@ -84,6 +84,10 @@ export class KarmaStore {
   private constructor() {
     if (typeof window !== 'undefined') {
       try {
+        // Clear old mock/v3 keys
+        localStorage.removeItem('proklinator_karma_profile_v3');
+        localStorage.removeItem('proklinator_karma_profile_v2');
+
         const saved = localStorage.getItem(STORAGE_KEY);
         if (saved) {
           this.profile = { ...DEFAULT_PROFILE, ...JSON.parse(saved) };
@@ -95,13 +99,8 @@ export class KarmaStore {
         this.profile = DEFAULT_PROFILE;
       }
 
-      // Check for Telegram WebApp environment
-      setTimeout(() => {
-        const tgUser = getTelegramUser();
-        if (tgUser && !this.profile.isAuthorized) {
-          this.authorizeWithTelegram(tgUser);
-        }
-      }, 300);
+      // Check for Telegram WebApp environment immediately and with multiple fallbacks
+      this.checkTelegramAutoAuth();
     }
   }
 
@@ -110,6 +109,28 @@ export class KarmaStore {
       KarmaStore.instance = new KarmaStore();
     }
     return KarmaStore.instance;
+  }
+
+  public checkTelegramAutoAuth() {
+    if (typeof window === 'undefined') return;
+
+    const performCheck = () => {
+      const tgUser = getTelegramUser();
+      if (tgUser) {
+        // If not authorized or user data differs, auto-authorize silently
+        if (!this.profile.isAuthorized || this.profile.telegramUser?.id !== tgUser.id) {
+          this.authorizeWithTelegram(tgUser);
+        }
+      }
+    };
+
+    // Immediate check
+    performCheck();
+
+    // Staggered checks to catch async WebApp SDK initialization
+    [50, 150, 300, 700, 1500].forEach((delay) => {
+      setTimeout(performCheck, delay);
+    });
   }
 
   public getProfile(): UserKarmaProfile {

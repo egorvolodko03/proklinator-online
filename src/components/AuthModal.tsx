@@ -1,8 +1,8 @@
 'use client';
 
 import React, { useEffect, useState, useRef } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { X, ShieldCheck, Lock, Send, Sparkles, Check, ArrowRight, UserCheck, RefreshCw } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { X, ShieldCheck, Send, Check, UserCheck, RefreshCw, Lock } from 'lucide-react';
 import { sound } from '@/lib/audio';
 import { triggerHaptic, getTelegramUser, isTelegramWebApp } from '@/lib/telegram';
 import { karmaStore } from '@/lib/karmaStore';
@@ -26,7 +26,28 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   const [detectedUser, setDetectedUser] = useState<TelegramUserData | null>(null);
   const [sessionToken, setSessionToken] = useState<string>('');
   const [isWaitingForBot, setIsWaitingForBot] = useState(false);
+  const [isVerifyingWidget, setIsVerifyingWidget] = useState(false);
   const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const widgetContainerRef = useRef<HTMLDivElement | null>(null);
+
+  const handleSuccessfulAuth = (user: TelegramUserData) => {
+    sound.playGoldenBell();
+    triggerHaptic('success');
+    try {
+      confetti({
+        particleCount: 50,
+        spread: 70,
+        origin: { y: 0.6 },
+        colors: ['#fbbf24', '#f59e0b', '#10b981'],
+      });
+    } catch {
+      // ignore
+    }
+    karmaStore.authorizeWithTelegram(user);
+    onShowToast(`🎉 Вы успешно авторизованы как ${user.first_name}!`, 'success');
+    if (onSuccess) onSuccess();
+    onClose();
+  };
 
   useEffect(() => {
     if (typeof window !== 'undefined' && isOpen) {
@@ -35,6 +56,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       const user = getTelegramUser();
       if (user) {
         setDetectedUser(user);
+        // Auto-authorize if opened inside Telegram
+        handleSuccessfulAuth(user);
+        return;
       }
 
       // Generate session token for browser auth
@@ -58,30 +82,47 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
       pollIntervalRef.current = interval;
 
+      // Define global widget callback
+      (window as any).onTelegramAuthCallback = async (authData: any) => {
+        try {
+          setIsVerifyingWidget(true);
+          const res = await fetch('/api/auth/telegram', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ authData }),
+          });
+          const result = await res.json();
+          if (result.success && result.user) {
+            handleSuccessfulAuth(result.user);
+          } else {
+            onShowToast(result.error || 'Ошибка проверки Telegram виджета', 'error');
+          }
+        } catch {
+          onShowToast('Ошибка связи с сервером авторизации', 'error');
+        } finally {
+          setIsVerifyingWidget(false);
+        }
+      };
+
+      // Dynamically mount official Telegram Web Widget
+      if (widgetContainerRef.current) {
+        widgetContainerRef.current.innerHTML = '';
+        const script = document.createElement('script');
+        script.src = 'https://telegram.org/js/telegram-widget.js?22';
+        script.setAttribute('data-telegram-login', 'karma_chancellery_bot');
+        script.setAttribute('data-size', 'large');
+        script.setAttribute('data-radius', '12');
+        script.setAttribute('data-onauth', 'onTelegramAuthCallback(user)');
+        script.setAttribute('data-request-access', 'write');
+        script.async = true;
+        widgetContainerRef.current.appendChild(script);
+      }
+
       return () => {
         if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
       };
     }
   }, [isOpen]);
-
-  const handleSuccessfulAuth = (user: TelegramUserData) => {
-    sound.playGoldenBell();
-    triggerHaptic('success');
-    try {
-      confetti({
-        particleCount: 50,
-        spread: 70,
-        origin: { y: 0.6 },
-        colors: ['#fbbf24', '#f59e0b', '#10b981'],
-      });
-    } catch {
-      // ignore
-    }
-    karmaStore.authorizeWithTelegram(user);
-    onShowToast(`🎉 Вы успешно авторизованы как ${user.first_name}!`, 'success');
-    if (onSuccess) onSuccess();
-    onClose();
-  };
 
   if (!isOpen) return null;
 
@@ -128,31 +169,27 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         </h3>
 
         <p className="mt-2 text-xs text-zinc-400 font-sans leading-relaxed">
-          Безопасный вход без паролей. Авторизация открывает доступ к созданию <strong>Сквадов</strong>,{' '}
+          Безопасный вход с криптографической верификацией подписи. Доступ к <strong>Сквадам</strong>,{' '}
           <strong>Рулетке Алтаря</strong>, покупке <strong>Щитов</strong> и сохранению прогресса.
         </p>
-
-        {/* Guest Mode Notice */}
-        <div className="mt-4 rounded-2xl border border-void-800 bg-void-900/60 p-3.5 text-left text-xs text-zinc-300">
-          <div className="flex items-center gap-2 text-emerald-400 font-semibold mb-1">
-            <Check className="w-3.5 h-3.5" />
-            <span>Гостевой режим:</span>
-          </div>
-          <p className="text-[11px] text-zinc-400 font-sans">
-            Создание и отправка разовых проклятий и благословений доступна всем без авторизации.
-          </p>
-        </div>
 
         {/* Live sync indicator when waiting for bot confirmation */}
         {isWaitingForBot && (
           <div className="mt-4 flex items-center justify-center gap-2 text-xs text-amber-300 bg-amber-500/10 border border-amber-500/30 p-2.5 rounded-xl font-mono">
             <RefreshCw className="w-3.5 h-3.5 animate-spin text-amber-300" />
-            <span>Ожидаем подтверждения в боте...</span>
+            <span>Ожидаем нажатия «Запустить» в боте...</span>
+          </div>
+        )}
+
+        {isVerifyingWidget && (
+          <div className="mt-4 flex items-center justify-center gap-2 text-xs text-emerald-300 bg-emerald-500/10 border border-emerald-500/30 p-2.5 rounded-xl font-mono">
+            <RefreshCw className="w-3.5 h-3.5 animate-spin text-emerald-300" />
+            <span>Проверка криптографической подписи Telegram...</span>
           </div>
         )}
 
         {/* Auth CTA Actions */}
-        <div className="mt-6 space-y-3">
+        <div className="mt-6 space-y-3.5">
           {detectedUser ? (
             <button
               onClick={handleAuthorizeMiniApp}
@@ -162,13 +199,29 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               <span>Войти как {detectedUser.first_name}</span>
             </button>
           ) : (
-            <button
-              onClick={handleOpenBotAuth}
-              className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl bg-gradient-to-r from-sky-500 to-sky-600 text-white font-heading text-sm font-bold shadow-[0_0_25px_rgba(14,165,233,0.4)] hover:scale-[1.02] active:scale-95 transition-all"
-            >
-              <Send className="w-4 h-4" />
-              <span>{isWaitingForBot ? 'Открыть бота повторно' : 'Войти через Telegram-бота'}</span>
-            </button>
+            <>
+              {/* Method 1: Official Telegram Web Login Widget Button */}
+              <div className="flex flex-col items-center justify-center min-h-[44px]">
+                <div ref={widgetContainerRef} className="flex justify-center" />
+              </div>
+
+              <div className="relative flex items-center justify-center my-2">
+                <div className="border-t border-void-800 w-full" />
+                <span className="bg-void-950 px-2 text-[10px] uppercase font-mono text-zinc-500 shrink-0">
+                  или через бота
+                </span>
+                <div className="border-t border-void-800 w-full" />
+              </div>
+
+              {/* Method 2: Direct Bot Auth with Live Sync */}
+              <button
+                onClick={handleOpenBotAuth}
+                className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl bg-gradient-to-r from-sky-500 to-sky-600 text-white font-heading text-xs sm:text-sm font-bold shadow-[0_0_25px_rgba(14,165,233,0.35)] hover:scale-[1.02] active:scale-95 transition-all"
+              >
+                <Send className="w-4 h-4" />
+                <span>{isWaitingForBot ? 'Открыть @karma_chancellery_bot снова' : 'Войти в 1 клик через бота'}</span>
+              </button>
+            </>
           )}
 
           <button
@@ -176,9 +229,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               sound.playClick();
               onClose();
             }}
-            className="w-full py-2.5 text-xs text-zinc-500 hover:text-zinc-300 font-sans"
+            className="w-full py-2 text-xs text-zinc-500 hover:text-zinc-300 font-sans"
           >
-            Продолжить как Гость
+            Продолжить в гостевом режиме
           </button>
         </div>
       </motion.div>

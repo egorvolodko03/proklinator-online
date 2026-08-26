@@ -6,17 +6,57 @@ export interface TelegramUser {
   photo_url?: string;
 }
 
+/**
+ * Robust check if running inside Telegram Mini App
+ */
 export function isTelegramWebApp(): boolean {
   if (typeof window === 'undefined') return false;
-  return Boolean((window as any).Telegram?.WebApp?.initData);
+  const tg = (window as any).Telegram?.WebApp;
+  if (!tg) return false;
+  // If Telegram.WebApp exists and has platform or initData
+  return Boolean(tg.initData || tg.initDataUnsafe?.user || (tg.platform && tg.platform !== 'unknown'));
 }
 
+/**
+ * Extracts Telegram user from Telegram.WebApp, initData query string, or URL hash
+ */
 export function getTelegramUser(): TelegramUser | null {
   if (typeof window === 'undefined') return null;
-  const webApp = (window as any).Telegram?.WebApp;
-  if (webApp?.initDataUnsafe?.user) {
-    return webApp.initDataUnsafe.user;
+
+  try {
+    const tg = (window as any).Telegram?.WebApp;
+
+    // 1. Direct initDataUnsafe.user
+    if (tg?.initDataUnsafe?.user && tg.initDataUnsafe.user.id) {
+      return tg.initDataUnsafe.user;
+    }
+
+    // 2. Parse from initData string if user object is serialized
+    if (tg?.initData) {
+      const params = new URLSearchParams(tg.initData);
+      const userStr = params.get('user');
+      if (userStr) {
+        return JSON.parse(userStr);
+      }
+    }
+
+    // 3. Fallback: Parse from window.location.hash or search (e.g. tgWebAppData=...)
+    const hash = window.location.hash.substring(1);
+    if (hash) {
+      const hashParams = new URLSearchParams(hash);
+      const tgWebAppData = hashParams.get('tgWebAppData');
+      if (tgWebAppData) {
+        const innerParams = new URLSearchParams(tgWebAppData);
+        const userStr = innerParams.get('user');
+        if (userStr) {
+          return JSON.parse(userStr);
+        }
+      }
+    }
+  } catch (e) {
+    console.error('Error parsing Telegram user:', e);
   }
+
   return null;
 }
 
@@ -53,8 +93,8 @@ export function triggerHaptic(type: 'light' | 'medium' | 'heavy' | 'success' | '
   }
 }
 
-export function initTelegramMiniApp() {
-  if (typeof window === 'undefined') return;
+export function initTelegramMiniApp(): TelegramUser | null {
+  if (typeof window === 'undefined') return null;
   const webApp = (window as any).Telegram?.WebApp;
   if (webApp) {
     try {
@@ -67,4 +107,5 @@ export function initTelegramMiniApp() {
       // ignore
     }
   }
+  return getTelegramUser();
 }
