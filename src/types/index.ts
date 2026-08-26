@@ -159,6 +159,7 @@ export interface UserKarmaProfile {
   lastDailySpinDate?: string;
   activeSquadId?: string;
   squads: string[]; // squad ids
+  authToken?: string;
   blessingsSent: number;
   cursesSent: number;
   receivedDecrees: DecreeVerdict[];

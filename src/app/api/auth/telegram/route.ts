@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { TelegramUserData } from '@/types';
+import { createSignedToken } from '@/lib/jwtAuth';
 
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || '8633526756:AAG_RC5hwERAZ_fhX_Gq59Sz8iMpGa-0LcU';
 
@@ -74,7 +75,8 @@ export async function POST(req: NextRequest) {
       if (!valid || !user) {
         return NextResponse.json({ success: false, error: 'Неверная подпись Telegram Mini App' }, { status: 401 });
       }
-      return NextResponse.json({ success: true, user });
+      const token = createSignedToken(user);
+      return NextResponse.json({ success: true, user, token });
     }
 
     // Case 2: Web Login Widget validation
@@ -99,7 +101,8 @@ export async function POST(req: NextRequest) {
         photo_url: body.authData.photo_url,
       };
 
-      return NextResponse.json({ success: true, user });
+      const token = createSignedToken(user);
+      return NextResponse.json({ success: true, user, token });
     }
 
     return NextResponse.json({ success: false, error: 'Отсутствуют данные авторизации' }, { status: 400 });
