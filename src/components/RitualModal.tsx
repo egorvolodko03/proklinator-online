@@ -95,6 +95,46 @@ export const RitualModal: React.FC<RitualModalProps> = ({
   const [customText, setCustomText] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
 
+  // Hold-to-Stamp State
+  const [holdProgress, setHoldProgress] = useState(0);
+  const [isHolding, setIsHolding] = useState(false);
+  const [isShaking, setIsShaking] = useState(false);
+  const holdIntervalRef = React.useRef<NodeJS.Timeout | null>(null);
+
+  const startHolding = () => {
+    setIsHolding(true);
+    let current = 0;
+    if (holdIntervalRef.current) clearInterval(holdIntervalRef.current);
+
+    holdIntervalRef.current = setInterval(() => {
+      current += 3;
+      setHoldProgress(current);
+      sound.playRampUpGlow(current / 100);
+
+      if (current === 30) triggerHaptic('light');
+      if (current === 60) triggerHaptic('medium');
+      if (current === 90) triggerHaptic('heavy');
+
+      if (current >= 100) {
+        if (holdIntervalRef.current) clearInterval(holdIntervalRef.current);
+        setIsHolding(false);
+        setHoldProgress(0);
+        setIsShaking(true);
+        setTimeout(() => setIsShaking(false), 500);
+        handleStartRitual();
+      }
+    }, 30);
+  };
+
+  const stopHolding = () => {
+    if (holdIntervalRef.current) {
+      clearInterval(holdIntervalRef.current);
+      holdIntervalRef.current = null;
+    }
+    setIsHolding(false);
+    setHoldProgress(0);
+  };
+
   const [verdict, setVerdict] = useState<DecreeVerdict | null>(null);
 
   useEffect(() => {
@@ -283,9 +323,18 @@ export const RitualModal: React.FC<RitualModalProps> = ({
     <div className="fixed inset-0 z-50 flex items-center justify-center p-2.5 sm:p-6 overflow-y-auto bg-black/80 backdrop-blur-md">
       <motion.div
         initial={{ opacity: 0, scale: 0.95, y: 15 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
+        animate={
+          isShaking
+            ? {
+                x: [-10, 10, -8, 8, -4, 4, 0],
+                y: [-6, 6, -4, 4, -2, 2, 0],
+                scale: [1, 1.03, 0.98, 1],
+                transition: { duration: 0.45 },
+              }
+            : { opacity: 1, scale: 1, y: 0 }
+        }
         exit={{ opacity: 0, scale: 0.95, y: 15 }}
-        className={`relative w-full max-w-2xl overflow-hidden rounded-3xl border bg-void-950 my-auto ${
+        className={`relative w-full max-w-2xl overflow-hidden rounded-3xl border bg-void-950 my-auto transition-colors ${
           isDark ? 'border-void-700 shadow-altar' : 'border-amber-500/30 shadow-[0_0_50px_rgba(251,191,36,0.15)]'
         }`}
       >
@@ -694,17 +743,52 @@ export const RitualModal: React.FC<RitualModalProps> = ({
                     <span>Назад</span>
                   </button>
 
-                  <button
-                    onClick={handleStartRitual}
-                    className={`flex items-center gap-2 rounded-xl px-6 py-2.5 text-xs sm:text-sm font-bold transition-all font-heading hover:scale-105 active:scale-95 ${
-                      isDark
-                        ? 'bg-gradient-to-r from-inferno-600 via-inferno-500 to-astral-600 text-white shadow-glow-crimson'
-                        : 'bg-gradient-to-r from-amber-400 via-emerald-400 to-sky-400 text-void-950 shadow-glow-gold'
-                    }`}
-                  >
-                    {isDark ? <Flame className="w-4 h-4 text-yellow-300" /> : <Sun className="w-4 h-4" />}
-                    <span>{isDark ? 'Утвердить печать' : 'Утвердить благодать'}</span>
-                  </button>
+                  {/* Interactive Hold-to-Stamp Button */}
+                  <div className="relative flex flex-col items-end">
+                    <button
+                      type="button"
+                      onMouseDown={startHolding}
+                      onMouseUp={stopHolding}
+                      onMouseLeave={stopHolding}
+                      onTouchStart={startHolding}
+                      onTouchEnd={stopHolding}
+                      onClick={() => {
+                        if (!isHolding && holdProgress === 0) {
+                          handleStartRitual();
+                        }
+                      }}
+                      className={`relative overflow-hidden flex items-center justify-center gap-2.5 rounded-2xl px-6 py-3 text-xs sm:text-sm font-bold transition-all font-heading select-none active:scale-95 shadow-xl ${
+                        isDark
+                          ? 'bg-gradient-to-r from-inferno-700 via-inferno-600 to-amber-600 text-white shadow-glow-crimson'
+                          : 'bg-gradient-to-r from-amber-400 via-emerald-400 to-sky-400 text-void-950 shadow-glow-gold'
+                      }`}
+                    >
+                      {/* Live Fill Progress Indicator */}
+                      <motion.div
+                        className="absolute inset-0 bg-white/30 pointer-events-none origin-left"
+                        style={{ width: `${holdProgress}%` }}
+                      />
+
+                      {/* Icon */}
+                      {isDark ? (
+                        <Flame className={`w-4 h-4 relative z-10 ${isHolding ? 'animate-bounce text-yellow-300' : 'text-yellow-400'}`} />
+                      ) : (
+                        <Sun className={`w-4 h-4 relative z-10 ${isHolding ? 'animate-spin text-void-950' : 'text-void-950'}`} />
+                      )}
+
+                      <span className="relative z-10 font-black tracking-wide">
+                        {isHolding
+                          ? `Запечатывание... ${holdProgress}%`
+                          : isDark
+                          ? '🔥 Удерживайте для наложения кары'
+                          : '✨ Удерживайте для благодати'}
+                      </span>
+                    </button>
+
+                    <span className="text-[10px] text-zinc-500 font-mono mt-1 pr-1">
+                      (Удерживайте 1 сек. или нажмите)
+                    </span>
+                  </div>
                 </div>
               </motion.div>
             )}
