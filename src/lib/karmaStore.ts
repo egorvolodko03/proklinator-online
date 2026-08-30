@@ -347,6 +347,15 @@ export class KarmaStore {
     }
   }
 
+  public setActiveSquad(squadId: string) {
+    this.profile.activeSquadId = squadId;
+    if (!this.profile.squads.includes(squadId)) {
+      this.profile.squads.push(squadId);
+    }
+    this.save();
+    this.notify();
+  }
+
   public leaveSquad(squadId: string) {
     this.profile.squads = this.profile.squads.filter((id) => id !== squadId);
     if (this.profile.activeSquadId === squadId) {
