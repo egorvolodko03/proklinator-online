@@ -301,12 +301,9 @@ export class KarmaStore {
   }
 
   public applyGachaPrize(prize: GachaPrize) {
-    switch (prize.type) {
+    switch (prize.prizeType) {
       case 'coins':
         this.profile.coins += prize.amount || 0;
-        break;
-      case 'exp':
-        this.addExp(prize.amount || 0);
         break;
       case 'shield':
         this.profile.activeShields += prize.amount || 1;
@@ -318,8 +315,8 @@ export class KarmaStore {
       case 'absolution':
         this.profile.hasAbsolution = true;
         break;
-      case 'eye':
-        this.profile.hasDetectiveEye = true;
+      case 'coffee':
+        this.addExp(prize.amount || 30);
         break;
     }
     this.save();
