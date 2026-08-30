@@ -16,11 +16,20 @@ export async function GET(req: NextRequest) {
   }
 
   if (session.status === 'authenticated' && session.user) {
-    return NextResponse.json({
+    const res = NextResponse.json({
       success: true,
       status: 'authenticated',
       user: session.user,
     });
+
+    // Set persistent session cookie (1 year)
+    res.cookies.set('proklinator_user_session', JSON.stringify(session.user), {
+      path: '/',
+      maxAge: 31536000,
+      sameSite: 'lax',
+    });
+
+    return res;
   }
 
   return NextResponse.json({ success: true, status: 'pending' });

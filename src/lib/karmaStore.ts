@@ -3,6 +3,25 @@ import { getRankByExp } from '@/data/ranks';
 import { getTelegramUser, isTelegramWebApp } from '@/lib/telegram';
 
 const STORAGE_KEY = 'proklinator_karma_profile_v4_clean';
+const COOKIE_NAME = 'proklinator_user_session';
+
+function getCookie(name: string): string | null {
+  if (typeof document === 'undefined') return null;
+  const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
+  return match ? decodeURIComponent(match[2]) : null;
+}
+
+function setCookie(name: string, val: string, days: number = 365) {
+  if (typeof document === 'undefined') return;
+  const date = new Date();
+  date.setTime(date.getTime() + days * 24 * 60 * 60 * 1000);
+  document.cookie = `${name}=${encodeURIComponent(val)};expires=${date.toUTCString()};path=/;SameSite=Lax`;
+}
+
+function deleteCookie(name: string) {
+  if (typeof document === 'undefined') return;
+  document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/;SameSite=Lax`;
+}
 
 export const SHOP_ARTIFACTS: ShopArtifact[] = [
   {
@@ -84,23 +103,31 @@ export class KarmaStore {
   private constructor() {
     if (typeof window !== 'undefined') {
       try {
-        // Clear old mock/v3 keys
-        localStorage.removeItem('proklinator_karma_profile_v3');
-        localStorage.removeItem('proklinator_karma_profile_v2');
-
         const saved = localStorage.getItem(STORAGE_KEY);
         if (saved) {
           this.profile = { ...DEFAULT_PROFILE, ...JSON.parse(saved) };
           this.recalculateRank();
         } else {
-          this.save();
+          // Check cookie fallback if localStorage was cleared
+          const cookieVal = getCookie(COOKIE_NAME);
+          if (cookieVal) {
+            const parsedUser = JSON.parse(cookieVal);
+            if (parsedUser && parsedUser.id) {
+              this.profile.isAuthorized = true;
+              this.profile.telegramUser = parsedUser;
+              this.save();
+            }
+          }
         }
       } catch {
         this.profile = DEFAULT_PROFILE;
       }
 
-      // Check for Telegram WebApp environment immediately and with multiple fallbacks
+      // Check Telegram Mini App environment immediately and sync with cloud
       this.checkTelegramAutoAuth();
+      if (this.profile.isAuthorized && this.profile.telegramUser) {
+        this.syncWithCloud();
+      }
     }
   }
 
@@ -117,17 +144,13 @@ export class KarmaStore {
     const performCheck = () => {
       const tgUser = getTelegramUser();
       if (tgUser) {
-        // If not authorized or user data differs, auto-authorize silently
         if (!this.profile.isAuthorized || this.profile.telegramUser?.id !== tgUser.id) {
           this.authorizeWithTelegram(tgUser);
         }
       }
     };
 
-    // Immediate check
     performCheck();
-
-    // Staggered checks to catch async WebApp SDK initialization
     [50, 150, 300, 700, 1500].forEach((delay) => {
       setTimeout(performCheck, delay);
     });
@@ -145,6 +168,7 @@ export class KarmaStore {
     this.profile.isAuthorized = true;
     this.profile.telegramUser = user;
     this.save();
+    setCookie(COOKIE_NAME, JSON.stringify(user), 365);
     this.notify();
     this.syncWithCloud();
   }
@@ -153,6 +177,7 @@ export class KarmaStore {
     this.profile.isAuthorized = false;
     this.profile.telegramUser = null;
     this.save();
+    deleteCookie(COOKIE_NAME);
     this.notify();
   }
 
@@ -184,7 +209,7 @@ export class KarmaStore {
     return false;
   }
 
-  private async syncWithCloud() {
+  public async syncWithCloud() {
     if (!this.profile.telegramUser) return;
     const userKey = this.profile.telegramUser.id.toString();
 
@@ -209,7 +234,7 @@ export class KarmaStore {
     }
   }
 
-  private async uploadToCloud() {
+  public async uploadToCloud() {
     if (!this.profile.telegramUser) return;
     try {
       await fetch('/api/profile', {
@@ -232,35 +257,30 @@ export class KarmaStore {
     this.notify();
   }
 
-  public addExperience(exp: number) {
-    this.profile.experience += exp;
+  public addExp(amount: number) {
+    this.profile.experience += amount;
     this.recalculateRank();
     this.save();
     this.notify();
   }
 
-  private recalculateRank() {
-    const rank = getRankByExp(this.profile.experience);
-    this.profile.rankLevel = rank.level;
-  }
+  public buyArtifact(artifactId: string): { success: boolean; message: string } {
+    const artifact = SHOP_ARTIFACTS.find((a) => a.id === artifactId);
+    if (!artifact) return { success: false, message: 'Артефакт не найден' };
 
-  public buyArtifact(artifact: ShopArtifact): { success: boolean; message: string } {
-    let finalCost = artifact.cost;
-    if (artifact.actionType === 'shield' && this.profile.rankLevel >= 3) {
-      finalCost = Math.round(finalCost * 0.85);
+    if (this.profile.coins < artifact.cost) {
+      return { success: false, message: 'Недостаточно карма-коинов' };
     }
 
-    if (finalCost > 0 && this.profile.coins < finalCost) {
-      return { success: false, message: 'Недостаточно Кармоидов 🪙' };
-    }
-
-    if (finalCost > 0) {
-      this.profile.coins -= finalCost;
-    }
+    this.profile.coins -= artifact.cost;
 
     switch (artifact.actionType) {
       case 'shield':
         this.profile.activeShields += 1;
+        break;
+      case 'golden_seal':
+        this.profile.hasGoldenSeal = true;
+        this.profile.useGoldenSealForNext = true;
         break;
       case 'absolution':
         this.profile.hasAbsolution = true;
@@ -268,81 +288,87 @@ export class KarmaStore {
       case 'eye':
         this.profile.hasDetectiveEye = true;
         break;
-      case 'golden_seal':
-        this.profile.hasGoldenSeal = true;
-        this.profile.useGoldenSealForNext = true; // auto-activate
-        break;
       case 'coffee':
-        this.profile.coins += 20;
+        this.addExp(25);
         break;
     }
 
-    this.addExperience(15);
+    this.addExp(artifact.cost);
     this.save();
     this.notify();
-    return { success: true, message: `Артефакт «${artifact.title}» приобретен и добавлен в инвентарь!` };
+    return { success: true, message: `Вы приобрели «${artifact.title}»!` };
   }
 
   public applyGachaPrize(prize: GachaPrize) {
-    switch (prize.prizeType) {
+    switch (prize.type) {
       case 'coins':
-        this.profile.coins += prize.amount || 25;
+        this.profile.coins += prize.amount || 0;
+        break;
+      case 'exp':
+        this.addExp(prize.amount || 0);
         break;
       case 'shield':
         this.profile.activeShields += prize.amount || 1;
-        break;
-      case 'absolution':
-        this.profile.hasAbsolution = true;
         break;
       case 'golden_seal':
         this.profile.hasGoldenSeal = true;
         this.profile.useGoldenSealForNext = true;
         break;
-      case 'coffee':
-        this.profile.coins += 20;
+      case 'absolution':
+        this.profile.hasAbsolution = true;
+        break;
+      case 'eye':
+        this.profile.hasDetectiveEye = true;
         break;
     }
-    this.profile.lastDailySpinDate = new Date().toDateString();
-    this.addExperience(25);
     this.save();
     this.notify();
   }
 
   public recordDecreeSent(realm: 'dark' | 'light') {
-    if (realm === 'light') {
-      this.profile.blessingsSent += 1;
-      this.addCoins(20);
-      this.addExperience(30);
-    } else {
+    if (realm === 'dark') {
       this.profile.cursesSent += 1;
-      this.addCoins(10);
-      this.addExperience(15);
+    } else {
+      this.profile.blessingsSent += 1;
+    }
+    this.addCoins(15);
+    this.addExp(30);
+    this.save();
+    this.notify();
+  }
+
+  public joinSquad(squadId: string) {
+    if (!this.profile.squads.includes(squadId)) {
+      this.profile.squads.push(squadId);
+      this.profile.activeSquadId = squadId;
+      this.save();
+      this.notify();
     }
   }
 
-  public setActiveSquad(squadId: string) {
-    this.profile.activeSquadId = squadId;
-    if (!this.profile.squads.includes(squadId)) {
-      this.profile.squads.push(squadId);
+  public leaveSquad(squadId: string) {
+    this.profile.squads = this.profile.squads.filter((id) => id !== squadId);
+    if (this.profile.activeSquadId === squadId) {
+      this.profile.activeSquadId = this.profile.squads[0] || undefined;
     }
     this.save();
     this.notify();
   }
 
-  public subscribe(fn: () => void): () => void {
-    this.listeners.push(fn);
+  public recalculateRank() {
+    const rank = getRankByExp(this.profile.experience);
+    this.profile.rankLevel = rank.level;
+  }
+
+  public subscribe(listener: () => void): () => void {
+    this.listeners.push(listener);
     return () => {
-      this.listeners = this.listeners.filter((l) => l !== fn);
+      this.listeners = this.listeners.filter((l) => l !== listener);
     };
   }
 
   private notify() {
-    this.listeners.forEach((fn) => fn());
-  }
-
-  private save() {
-    this.saveLocally();
-    this.uploadToCloud();
+    this.listeners.forEach((l) => l());
   }
 
   private saveLocally() {
@@ -353,6 +379,11 @@ export class KarmaStore {
         // ignore
       }
     }
+  }
+
+  public save() {
+    this.saveLocally();
+    this.uploadToCloud();
   }
 }
 
