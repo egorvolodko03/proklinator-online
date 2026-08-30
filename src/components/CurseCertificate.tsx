@@ -132,10 +132,17 @@ export const CurseCertificate: React.FC<CurseCertificateProps> = ({
       <div className="w-full max-w-xl p-1.5 sm:p-4">
         <div
           ref={certRef}
+          style={{
+            backgroundImage: isDark
+              ? 'radial-gradient(circle at 50% 50%, rgba(9, 9, 11, 0.86), rgba(9, 9, 11, 0.95)), url(/assets/certificates/dark_parchment.jpg)'
+              : 'radial-gradient(circle at 50% 50%, rgba(15, 23, 42, 0.84), rgba(9, 9, 11, 0.94)), url(/assets/certificates/celestial_parchment.jpg)',
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+          }}
           className={`relative overflow-hidden rounded-3xl border-2 p-5 sm:p-8 text-neutral-100 transition-all ${
             isDark
-              ? 'border-karma-gold/50 bg-gradient-to-b from-void-900 via-void-950 to-void-900 shadow-[0_0_50px_rgba(251,191,36,0.15)]'
-              : 'border-amber-400/60 bg-gradient-to-b from-slate-900 via-void-950 to-slate-900 shadow-[0_0_50px_rgba(251,191,36,0.25)]'
+              ? 'border-karma-gold/60 shadow-[0_0_60px_rgba(251,191,36,0.2)]'
+              : 'border-amber-400/70 shadow-[0_0_60px_rgba(251,191,36,0.3)]'
           }`}
         >
           {/* Decorative Corner Ornaments */}
@@ -249,23 +256,13 @@ export const CurseCertificate: React.FC<CurseCertificateProps> = ({
               </div>
             </div>
 
-            {/* Glowing Wax Seal */}
-            <div className={`relative h-14 w-14 sm:h-16 sm:w-16 rounded-full p-1 ring-2 transform rotate-12 ${
-              isDark
-                ? 'bg-gradient-to-br from-red-600 via-inferno-600 to-red-900 shadow-[0_0_20px_rgba(220,38,38,0.7)] ring-yellow-400/40'
-                : 'bg-gradient-to-br from-amber-400 via-yellow-500 to-amber-600 shadow-glow-gold ring-amber-200/60'
-            }`}>
-              <div className={`flex h-full w-full items-center justify-center rounded-full border border-dashed text-center ${
-                isDark ? 'border-yellow-200/50 bg-red-800' : 'border-yellow-950/40 bg-amber-500'
-              }`}>
-                <div className={`text-[8px] sm:text-[9px] font-black uppercase tracking-tighter font-heading ${
-                  isDark ? 'text-yellow-200' : 'text-yellow-950'
-                }`}>
-                  <div>{isDark ? 'КАРМА' : 'ДОБРО'}</div>
-                  {isDark ? <Flame className="w-3 h-3 mx-auto text-yellow-300" /> : <Sun className="w-3 h-3 mx-auto text-yellow-950" />}
-                  <div>{isDark ? '666' : '777'}</div>
-                </div>
-              </div>
+            {/* Glowing 3D Wax Seal Image */}
+            <div className="relative h-14 w-14 sm:h-16 sm:w-16 rounded-2xl overflow-hidden shadow-[0_0_25px_rgba(251,191,36,0.4)] border-2 border-karma-gold/70 transform rotate-6 hover:rotate-12 transition-transform bg-void-950">
+              <img
+                src={isDark ? '/assets/seals/tribunal_seal.jpg' : '/assets/seals/celestial_seal.jpg'}
+                alt="3D Wax Seal"
+                className="h-full w-full object-cover"
+              />
             </div>
           </div>
         </div>
