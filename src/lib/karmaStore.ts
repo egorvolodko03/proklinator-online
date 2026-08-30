@@ -264,8 +264,9 @@ export class KarmaStore {
     this.notify();
   }
 
-  public buyArtifact(artifactId: string): { success: boolean; message: string } {
-    const artifact = SHOP_ARTIFACTS.find((a) => a.id === artifactId);
+  public buyArtifact(artifactOrId: string | ShopArtifact): { success: boolean; message: string } {
+    const id = typeof artifactOrId === 'string' ? artifactOrId : artifactOrId.id;
+    const artifact = typeof artifactOrId === 'object' ? artifactOrId : SHOP_ARTIFACTS.find((a) => a.id === id);
     if (!artifact) return { success: false, message: 'Артефакт не найден' };
 
     if (this.profile.coins < artifact.cost) {
