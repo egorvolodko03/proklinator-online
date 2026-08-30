@@ -1,31 +1,49 @@
 import { Metadata } from 'next';
 import { redirect } from 'next/navigation';
+import { DecreeVerdict } from '@/types';
 
 interface Props {
   params: { id: string };
   searchParams: { [key: string]: string | string[] | undefined };
 }
 
+async function getVerdict(id: string): Promise<DecreeVerdict | null> {
+  try {
+    const res = await fetch(`https://proklinator-online.vercel.app/api/curses?id=${id}`, {
+      next: { revalidate: 60 },
+    });
+    if (res.ok) {
+      const data = await res.json();
+      if (data.success && data.verdict) return data.verdict;
+    }
+  } catch {
+    // fallback
+  }
+  return null;
+}
+
 export async function generateMetadata({ params, searchParams }: Props): Promise<Metadata> {
   const id = params.id;
   const baseUrl = 'https://proklinator-online.vercel.app';
 
-  // Read params or fallback
-  const name = typeof searchParams.name === 'string' ? searchParams.name : 'Гражданин';
-  const realm = typeof searchParams.realm === 'string' ? searchParams.realm : 'dark';
-  const sin = typeof searchParams.sin === 'string' ? searchParams.sin : 'Нарушение вселенского баланса';
-  const curse = typeof searchParams.curse === 'string' ? searchParams.curse : 'Кара Канцелярии';
-  const title = typeof searchParams.title === 'string' ? searchParams.title : 'Официальный Приговор';
+  let verdict = await getVerdict(id);
+
+  // Read from fetched verdict or searchParams fallback
+  const name = verdict?.targetName || (typeof searchParams.name === 'string' ? searchParams.name : 'Гражданин');
+  const realm = verdict?.realm || (typeof searchParams.realm === 'string' ? searchParams.realm : 'dark');
+  const sin = verdict?.actionText || (typeof searchParams.sin === 'string' ? searchParams.sin : 'Нарушение баланса');
+  const curse = verdict?.verdictText || (typeof searchParams.curse === 'string' ? searchParams.curse : 'Кара Канцелярии');
+  const title = verdict?.verdictTitle || (typeof searchParams.title === 'string' ? searchParams.title : 'Официальный Приговор');
 
   const isDark = realm === 'dark';
-  const ogImageUrl = `${baseUrl}/api/og?realm=${realm}&name=${encodeURIComponent(name)}&sin=${encodeURIComponent(sin)}&curse=${encodeURIComponent(curse)}&title=${encodeURIComponent(title)}`;
+  const ogImageUrl = `${baseUrl}/api/og?realm=${realm}&name=${encodeURIComponent(name)}&sin=${encodeURIComponent(sin)}&curse=${encodeURIComponent(curse)}&title=${encodeURIComponent(title)}&case=${encodeURIComponent(verdict?.caseNumber || id)}`;
 
   return {
     title: isDark ? `Грамота Проклятия — ${name}` : `Грамота Благодати — ${name}`,
-    description: isDark ? `Приговор Канцелярии: ${curse}` : `Благословение: ${curse}`,
+    description: isDark ? `Приговор: ${curse}` : `Благословение: ${curse}`,
     openGraph: {
       title: isDark ? `⚖️ Грамота Проклятия: ${name}` : `✨ Грамота Благодати: ${name}`,
-      description: isDark ? `Деяние: «${sin}»\nПриговор: «${curse}»` : `Добро: «${sin}»\nБлагодать: «${curse}»`,
+      description: isDark ? `⚡ Деяние: «${sin}»\n🩸 Приговор: «${curse}»` : `🌟 Добро: «${sin}»\n🕊️ Благодать: «${curse}»`,
       url: `${baseUrl}/c/${id}`,
       siteName: 'Проклинатор онлайн',
       images: [
@@ -47,12 +65,23 @@ export async function generateMetadata({ params, searchParams }: Props): Promise
   };
 }
 
-export default function CertificatePage({ params, searchParams }: Props) {
+export default async function CertificatePage({ params, searchParams }: Props) {
+  const verdict = await getVerdict(params.id);
   const query = new URLSearchParams();
   query.set('c_id', params.id);
-  Object.entries(searchParams).forEach(([k, v]) => {
-    if (typeof v === 'string') query.set(k, v);
-  });
+
+  if (verdict) {
+    query.set('name', verdict.targetName);
+    query.set('realm', verdict.realm);
+    query.set('sin', verdict.actionText);
+    query.set('curse', verdict.verdictText);
+    query.set('title', verdict.verdictTitle);
+    query.set('cat', verdict.category);
+  } else {
+    Object.entries(searchParams).forEach(([k, v]) => {
+      if (typeof v === 'string') query.set(k, v);
+    });
+  }
 
   // Redirect to main app with preloaded certificate modal
   redirect(`/?${query.toString()}`);

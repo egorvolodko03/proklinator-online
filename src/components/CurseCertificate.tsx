@@ -2,7 +2,7 @@
 
 import React, { useRef, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Download, Copy, Send, RotateCcw, Flame, Sun, Check, ShieldAlert, Sparkles, Heart, Share2, SendHorizonal } from 'lucide-react';
+import { Download, Copy, Send, RotateCcw, Flame, Sun, Check, ShieldAlert, Sparkles, Heart, Share2, SendHorizonal, Image as ImageIcon } from 'lucide-react';
 import { DecreeVerdict } from '@/types';
 import { CATEGORY_LABELS } from '@/lib/utils';
 import { sound } from '@/lib/audio';
@@ -27,19 +27,10 @@ export const CurseCertificate: React.FC<CurseCertificateProps> = ({
   const isDark = verdict.realm === 'dark';
   const categoryInfo = CATEGORY_LABELS[verdict.category] || CATEGORY_LABELS.other;
 
-  // Ultra-clean 40-character short URL with OpenGraph Photo Card
+  // Ultra-clean 35-character short URL with OpenGraph Photo Card
   const getCleanShortUrl = () => {
-    if (typeof window === 'undefined') return 'https://proklinator-online.vercel.app';
-    const origin = window.location.origin;
-    const params = new URLSearchParams({
-      name: verdict.targetName,
-      realm: verdict.realm,
-      sin: verdict.actionText,
-      curse: verdict.verdictText,
-      title: verdict.verdictTitle,
-      cat: verdict.category,
-    });
-    return `${origin}/c/${verdict.id}?${params.toString()}`;
+    if (typeof window === 'undefined') return `https://proklinator-online.vercel.app/c/${verdict.id}`;
+    return `${window.location.origin}/c/${verdict.id}`;
   };
 
   const handleCopyLink = async () => {
@@ -96,8 +87,7 @@ export const CurseCertificate: React.FC<CurseCertificateProps> = ({
   };
 
   /**
-   * Directly opens Telegram Share picker:
-   * Immediately presents contacts list, then posts the certificate card + photo + caption!
+   * Direct Telegram Share Picker with Clean Short URL & Photo Card Preview
    */
   const handleShareToTelegramDirectly = () => {
     sound.playGoldenBell();
@@ -256,62 +246,59 @@ export const CurseCertificate: React.FC<CurseCertificateProps> = ({
               </div>
             </div>
 
-            {/* Glowing 3D Wax Seal Image */}
-            <div className="relative h-14 w-14 sm:h-16 sm:w-16 rounded-2xl overflow-hidden shadow-[0_0_25px_rgba(251,191,36,0.4)] border-2 border-karma-gold/70 transform rotate-6 hover:rotate-12 transition-transform bg-void-950">
+            {/* Glowing 3D Wax Seal Image with Transparent Background */}
+            <div className="relative h-14 w-14 sm:h-16 sm:w-16 transform rotate-6 hover:rotate-12 transition-transform">
               <img
-                src={isDark ? '/assets/seals/tribunal_seal.jpg' : '/assets/seals/celestial_seal.jpg'}
+                src={isDark ? '/assets/seals/tribunal_seal.png' : '/assets/seals/celestial_seal.png'}
                 alt="3D Wax Seal"
-                className="h-full w-full object-cover"
+                className="h-full w-full object-contain filter drop-shadow-[0_4px_12px_rgba(0,0,0,0.8)]"
               />
             </div>
           </div>
         </div>
       </div>
 
-      {/* Action Toolbar */}
-      <div className="mt-4 flex flex-wrap items-center justify-center gap-2 sm:gap-3 max-w-lg px-3">
-        {/* Direct Telegram Share Picker */}
+      {/* Action Buttons */}
+      <div className="mt-4 w-full max-w-xl px-2 space-y-2.5">
+        {/* Direct Telegram Share */}
         <button
           onClick={handleShareToTelegramDirectly}
-          className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-sky-500 via-sky-600 to-blue-600 px-5 sm:px-6 py-3 text-xs sm:text-sm font-bold text-white shadow-[0_0_25px_rgba(14,165,233,0.5)] transition-all hover:scale-105 active:scale-95 font-heading"
+          className="w-full flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-sky-500 via-sky-600 to-blue-600 px-6 py-3.5 text-sm sm:text-base font-bold text-white shadow-[0_0_30px_rgba(14,165,233,0.4)] hover:scale-[1.02] active:scale-95 transition-all font-heading"
         >
-          <SendHorizonal className="w-4 h-4 text-white" />
+          <Send className="w-5 h-5" />
           <span>Отправить в Telegram</span>
         </button>
 
-        {/* Download PNG */}
-        <button
-          onClick={handleDownloadImage}
-          disabled={isDownloading}
-          className={`flex items-center gap-2 rounded-xl px-4 sm:px-5 py-2.5 sm:py-3 text-xs sm:text-sm font-bold text-white transition-all hover:scale-105 active:scale-95 disabled:opacity-50 font-heading ${
-            isDark
-              ? 'bg-gradient-to-r from-inferno-600 to-inferno-500 shadow-glow-crimson'
-              : 'bg-gradient-to-r from-amber-500 to-emerald-500 shadow-glow-gold text-void-950'
-          }`}
-        >
-          <Download className="w-4 h-4" />
-          <span>{isDownloading ? 'Сохранение...' : 'Скачать PNG'}</span>
-        </button>
+        {/* Secondary Actions Row */}
+        <div className="grid grid-cols-2 gap-2">
+          <button
+            onClick={handleDownloadImage}
+            disabled={isDownloading}
+            className="flex items-center justify-center gap-2 rounded-xl border border-void-700 bg-void-900/90 px-4 py-2.5 text-xs font-bold text-zinc-200 hover:border-karma-gold hover:text-white transition-all font-heading"
+          >
+            <Download className="w-4 h-4 text-karma-gold" />
+            <span>{isDownloading ? 'Сохранение...' : 'Скачать PNG'}</span>
+          </button>
 
-        {/* Copy Link */}
-        <button
-          onClick={handleCopyLink}
-          className="flex items-center gap-1.5 rounded-xl border border-void-700 bg-void-850 px-3.5 py-2.5 text-xs sm:text-sm font-semibold text-zinc-200 shadow-md transition-all hover:border-astral-500 hover:text-white active:scale-95"
-        >
-          {isCopied ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4 text-astral-400" />}
-          <span>{isCopied ? 'Скопировано!' : 'Короткая ссылка'}</span>
-        </button>
+          <button
+            onClick={handleCopyLink}
+            className="flex items-center justify-center gap-2 rounded-xl border border-void-700 bg-void-900/90 px-4 py-2.5 text-xs font-bold text-zinc-200 hover:border-karma-gold hover:text-white transition-all font-heading"
+          >
+            {isCopied ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4 text-zinc-400" />}
+            <span>{isCopied ? 'Скопировано!' : 'Короткая ссылка'}</span>
+          </button>
+        </div>
 
-        {/* Reset */}
+        {/* Reset / New Decree Button */}
         <button
           onClick={() => {
             sound.playClick();
             onReset();
           }}
-          className="flex items-center gap-1.5 rounded-xl border border-void-700 bg-void-900 px-3.5 py-2.5 text-xs sm:text-sm font-medium text-zinc-400 transition-all hover:border-void-600 hover:text-zinc-200 active:scale-95"
+          className="w-full flex items-center justify-center gap-1.5 py-2 text-xs text-zinc-500 hover:text-zinc-300 font-sans"
         >
-          <RotateCcw className="w-4 h-4" />
-          <span>{isDark ? 'Проклясть еще' : 'Благословить еще'}</span>
+          <RotateCcw className="w-3.5 h-3.5" />
+          <span>Вынести новый приговор или благословение</span>
         </button>
       </div>
     </div>
