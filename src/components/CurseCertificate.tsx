@@ -2,13 +2,14 @@
 
 import React, { useRef, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Download, Copy, Send, RotateCcw, Flame, Sun, Check, ShieldAlert, Sparkles, Heart, Share2 } from 'lucide-react';
+import { Download, Copy, Send, RotateCcw, Flame, Sun, Check, ShieldAlert, Sparkles, Heart } from 'lucide-react';
 import { DecreeVerdict } from '@/types';
 import { CATEGORY_LABELS } from '@/lib/utils';
 import { sound } from '@/lib/audio';
 import { triggerHaptic } from '@/lib/telegram';
 import { toPng } from 'html-to-image';
 import { karmaStore } from '@/lib/karmaStore';
+import { squadStore } from '@/lib/squadStore';
 
 interface CurseCertificateProps {
   verdict: DecreeVerdict;
@@ -94,27 +95,54 @@ export const CurseCertificate: React.FC<CurseCertificateProps> = ({
   };
 
   /**
-   * Dispatches the photo of the certificate via direct bot notification (Scenario A) or Telegram share picker (Scenario B)
+   * Dispatches the photo of the certificate directly via bot DM or Telegram share picker
    */
   const handleSendPhotoToTelegram = async () => {
     sound.playGoldenBell();
     triggerHaptic('success');
     setIsSending(true);
 
-    const targetUsername = verdict.telegramUsername;
-    const isDirectSquadMember = Boolean(targetUsername);
+    const profile = karmaStore.getProfile();
+    const cleanTargetUsername = (verdict.telegramUsername || '').replace(/^@/, '').toLowerCase().trim();
+    const cleanMyUsername = (profile.telegramUser?.username || '').replace(/^@/, '').toLowerCase().trim();
+
     const shortUrl = getCleanShortUrl();
     const caption = getFormattedCaption();
     const tgShareUrl = `https://t.me/share/url?url=${encodeURIComponent(shortUrl)}&text=${encodeURIComponent(caption)}`;
 
-    if (isDirectSquadMember) {
-      onShowToast(`🚀 Отправляем фото грамоты @${targetUsername}...`, 'info');
+    // 1. Resolve numeric recipient Telegram ID
+    let resolvedRecipientId: number | null = null;
+
+    if (cleanTargetUsername && cleanTargetUsername === cleanMyUsername && profile.telegramUser?.id) {
+      // User sending to themselves
+      resolvedRecipientId = profile.telegramUser.id;
+    } else if (cleanTargetUsername) {
+      // Search in joined squads for this username's numeric ID
+      const squads = squadStore.getSquads();
+      for (const s of squads) {
+        const found = s.members.find(
+          (m) => (m.username || '').replace(/^@/, '').toLowerCase().trim() === cleanTargetUsername
+        );
+        if (found) {
+          const numId = (found as any).telegramId || parseInt(found.id.replace(/\D/g, ''), 10);
+          if (!isNaN(numId) && numId > 100000) {
+            resolvedRecipientId = numId;
+            break;
+          }
+        }
+      }
+    }
+
+    // Scenario A: Recipient has known numeric ID -> direct Bot DM sendPhoto
+    if (resolvedRecipientId) {
+      onShowToast(`🚀 Отправляем фото грамоты в личный чат Telegram...`, 'info');
       try {
         const res = await fetch('/api/telegram/notify', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            recipientUsername: targetUsername,
+            recipientId: resolvedRecipientId,
+            recipientUsername: cleanTargetUsername,
             realm: verdict.realm,
             targetName: verdict.targetName,
             actionText: verdict.actionText,
@@ -128,29 +156,30 @@ export const CurseCertificate: React.FC<CurseCertificateProps> = ({
         setIsSending(false);
 
         if (data.success) {
-          onShowToast(`🕊️ Анонимное фото грамоты успешно отправлено @${targetUsername}!`, 'success');
+          onShowToast(`🕊️ Грамота-фото успешно доставлена в Telegram!`, 'success');
           return;
-        } else if (data.notStarted) {
-          onShowToast(`@${targetUsername} еще не запустил бота. Открываем Telegram для отправки...`, 'info');
         }
       } catch {
         setIsSending(false);
       }
-    } else {
-      setIsSending(false);
-      onShowToast('🚀 Открываем Telegram для выбора чата...', 'info');
     }
 
-    // Scenario B: Open Telegram Share Picker / Mini App switchInlineQuery
-    if (typeof window !== 'undefined' && (window as any).Telegram?.WebApp?.switchInlineQuery) {
-      (window as any).Telegram.WebApp.switchInlineQuery(verdict.id, ['users', 'groups', 'channels']);
-      return;
+    // Scenario B: External recipient / unlinked -> Direct Telegram Share Picker
+    setIsSending(false);
+    onShowToast('🚀 Открываем Telegram для выбора получателя...', 'info');
+
+    // In Telegram Mini App
+    if (typeof window !== 'undefined' && (window as any).Telegram?.WebApp) {
+      const tg = (window as any).Telegram.WebApp;
+      if (tg.openTelegramLink) {
+        tg.openTelegramLink(tgShareUrl);
+        return;
+      }
     }
 
-    if (typeof window !== 'undefined' && (window as any).Telegram?.WebApp?.openTelegramLink) {
-      (window as any).Telegram.WebApp.openTelegramLink(tgShareUrl);
-    } else {
-      window.open(tgShareUrl, '_blank');
+    // Direct Browser Navigation (avoids popup blockers)
+    if (typeof window !== 'undefined') {
+      window.location.href = tgShareUrl;
     }
   };
 
