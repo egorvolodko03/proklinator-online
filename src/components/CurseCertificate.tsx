@@ -7,7 +7,8 @@ import { DecreeVerdict } from '@/types';
 import { CATEGORY_LABELS } from '@/lib/utils';
 import { sound } from '@/lib/audio';
 import { triggerHaptic } from '@/lib/telegram';
-import { toPng, toBlob } from 'html-to-image';
+import { toPng } from 'html-to-image';
+import { karmaStore } from '@/lib/karmaStore';
 
 interface CurseCertificateProps {
   verdict: DecreeVerdict;
@@ -22,6 +23,7 @@ export const CurseCertificate: React.FC<CurseCertificateProps> = ({
 }) => {
   const certRef = useRef<HTMLDivElement | null>(null);
   const [isDownloading, setIsDownloading] = useState(false);
+  const [isSending, setIsSending] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
 
   const isDark = verdict.realm === 'dark';
@@ -92,44 +94,56 @@ export const CurseCertificate: React.FC<CurseCertificateProps> = ({
   };
 
   /**
-   * Direct Telegram Deeplink without OS picker dialog
+   * Dispatches the photo of the certificate directly via Telegram Bot & Inline Query
    */
-  const handleDirectTelegramShare = async () => {
+  const handleSendPhotoToTelegram = async () => {
     sound.playGoldenBell();
     triggerHaptic('success');
+    setIsSending(true);
+    onShowToast('🚀 Отправляем фото грамоты в Telegram...', 'info');
 
-    const shortUrl = getCleanShortUrl();
-    const caption = getFormattedCaption();
-    const tgShareUrl = `https://t.me/share/url?url=${encodeURIComponent(shortUrl)}&text=${encodeURIComponent(caption)}`;
+    const profile = karmaStore.getProfile();
+    const currentChatId = profile.telegramUser?.id;
+    const targetUsername = verdict.telegramUsername;
 
-    // Try to pre-copy image to clipboard if supported
-    if (certRef.current) {
-      toBlob(certRef.current, { quality: 0.95, pixelRatio: 2 }).then((blob) => {
-        if (blob && navigator.clipboard && (window as any).ClipboardItem) {
-          try {
-            const item = new (window as any).ClipboardItem({ 'image/png': blob });
-            navigator.clipboard.write([item]);
-          } catch {
-            // ignore
-          }
-        }
-      }).catch(() => {});
+    // 1. Trigger bot sendPhoto in background
+    try {
+      await fetch('/api/telegram/notify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chatId: currentChatId,
+          username: targetUsername,
+          realm: verdict.realm,
+          targetName: verdict.targetName,
+          actionText: verdict.actionText,
+          verdictTitle: verdict.verdictTitle,
+          verdictText: verdict.verdictText,
+          decreeId: verdict.id,
+        }),
+      });
+    } catch {
+      // ignore
     }
 
-    onShowToast('🚀 Открываем выбор чата в Telegram...', 'success');
+    setIsSending(false);
 
-    // If inside Telegram Mini App, use official Telegram WebApp API
-    if (typeof window !== 'undefined' && (window as any).Telegram?.WebApp?.openTelegramLink) {
-      try {
-        (window as any).Telegram.WebApp.openTelegramLink(tgShareUrl);
+    // 2. If in Telegram Mini App: use native switchInlineQuery to send PHOTO into any chat
+    if (typeof window !== 'undefined' && (window as any).Telegram?.WebApp) {
+      const tg = (window as any).Telegram.WebApp;
+      if (tg.switchInlineQuery) {
+        tg.switchInlineQuery(verdict.id, ['users', 'groups', 'channels']);
         return;
-      } catch {
-        // fallback
       }
     }
 
-    // Direct browser redirect to Telegram Share
-    window.open(tgShareUrl, '_blank');
+    // 3. Fallback: Direct bot delivery deep link
+    const botDeepLink = `https://t.me/proklinator_bot?start=c_${verdict.id}`;
+    if (typeof window !== 'undefined' && (window as any).Telegram?.WebApp?.openTelegramLink) {
+      (window as any).Telegram.WebApp.openTelegramLink(botDeepLink);
+    } else {
+      window.open(botDeepLink, '_blank');
+    }
   };
 
   return (
@@ -300,13 +314,14 @@ export const CurseCertificate: React.FC<CurseCertificateProps> = ({
 
       {/* Action Buttons */}
       <div className="mt-4 w-full max-w-xl px-2 space-y-2.5">
-        {/* Direct Telegram Share */}
+        {/* Direct Send Photo to Telegram */}
         <button
-          onClick={handleDirectTelegramShare}
-          className="w-full flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-sky-500 via-sky-600 to-blue-600 px-6 py-3.5 text-sm sm:text-base font-bold text-white shadow-[0_0_30px_rgba(14,165,233,0.4)] hover:scale-[1.02] active:scale-95 transition-all font-heading"
+          onClick={handleSendPhotoToTelegram}
+          disabled={isSending}
+          className="w-full flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-sky-500 via-sky-600 to-blue-600 px-6 py-3.5 text-sm sm:text-base font-bold text-white shadow-[0_0_30px_rgba(14,165,233,0.4)] hover:scale-[1.02] active:scale-95 transition-all font-heading disabled:opacity-75"
         >
           <Send className="w-5 h-5" />
-          <span>Отправить в Telegram</span>
+          <span>{isSending ? 'Отправка...' : 'Отправить фото в Telegram'}</span>
         </button>
 
         {/* Secondary Actions Row */}
