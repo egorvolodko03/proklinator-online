@@ -1,77 +1,114 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || '8633526756:AAG_RC5hwERAZ_fhX_Gq59Sz8iMpGa-0LcU';
+const BASE_URL = 'https://proklinator-online.vercel.app';
 
 /**
- * Serverless Telegram Bot Notifier using sendPhoto with guaranteed fallback
+ * Serverless Telegram Bot Notifier using direct multipart photo delivery
  */
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { chatId, username, realm, targetName, actionText, verdictTitle, verdictText, decreeId } = body;
+    const {
+      recipientId,
+      recipientUsername,
+      chatId,
+      username,
+      realm,
+      targetName,
+      actionText,
+      verdictTitle,
+      verdictText,
+      decreeId,
+    } = body;
 
     const isDark = realm === 'dark';
-    const baseUrl = 'https://proklinator-online.vercel.app';
     
-    // Direct URL to generated dynamic Certificate image
-    const photoUrl = `${baseUrl}/api/og?realm=${realm}&name=${encodeURIComponent(targetName)}&sin=${encodeURIComponent(actionText)}&curse=${encodeURIComponent(verdictText)}&title=${encodeURIComponent(verdictTitle)}&case=${encodeURIComponent('№ КРМ-' + (decreeId || '777').toUpperCase())}`;
+    // Target recipient: prioritize recipient from squad, then target username, then fallback
+    const targetChat =
+      recipientId ||
+      chatId ||
+      (recipientUsername ? `@${recipientUsername.replace(/^@/, '')}` : null) ||
+      (username ? `@${username.replace(/^@/, '')}` : null);
 
-    // Clean caption under the photo
+    if (!targetChat) {
+      return NextResponse.json({ success: false, error: 'No recipient specified' }, { status: 400 });
+    }
+
+    // Clean anonymous caption under the photo
     const caption = isDark
       ? `⚖️ <b>ТЕМНАЯ КАНЦЕЛЯРИЯ КАРМЫ: ОФИЦИАЛЬНЫЙ ПРИГОВОР</b>\n\n` +
         `👤 <b>Субъект:</b> ${targetName}\n` +
         `📜 <b>Вменяемое деяние:</b> <i>«${actionText}»</i>\n\n` +
         `🩸 <b>Приговор:</b> <b>${verdictTitle}</b>\n` +
         `<i>«${verdictText}»</i>\n\n` +
-        `<i>Печать астрального трибунала активна.</i>`
+        `🏛️ <i>Печать астрального трибунала активна • Доставлено анонимно</i>`
       : `✨ <b>НЕБЕСНАЯ КАНЦЕЛЯРИЯ БЛАГОДАТИ: ГРАМОТА ДОБРА</b>\n\n` +
         `👤 <b>Адресат:</b> ${targetName}\n` +
         `🌟 <b>Доброе деяние:</b> <i>«${actionText}»</i>\n\n` +
         `🕊️ <b>Благословение:</b> <b>${verdictTitle}</b>\n` +
         `<i>«${verdictText}»</i>\n\n` +
-        `<i>Вам начислено +20 Кармоидов.</i>`;
+        `🏛️ <i>Заверено небесной канцелярией • Доставлено анонимно</i>`;
 
-    const webAppUrl = `${baseUrl}/c/${decreeId || 'view'}`;
-
-    const inlineKeyboard = [
-      [
-        {
-          text: isDark ? '📜 Открыть Грамоту в Mini App' : '✨ Открыть Грамоту в Mini App',
-          web_app: { url: webAppUrl },
-        },
-      ],
-      [
-        {
-          text: isDark ? '🛡️ Активировать Зеркальный Щит' : '🪙 Кармическая Лавка',
-          web_app: { url: baseUrl },
-        },
-      ],
-    ];
-
-    const targetChat = chatId || (username ? `@${username.replace(/^@/, '')}` : null);
-    if (!targetChat) {
-      return NextResponse.json({ success: false, error: 'No target chat specified' }, { status: 400 });
-    }
+    // High-resolution certificate image URL
+    const ogImageUrl = `${BASE_URL}/api/og?realm=${realm}&name=${encodeURIComponent(targetName)}&sin=${encodeURIComponent(actionText)}&curse=${encodeURIComponent(verdictText)}&title=${encodeURIComponent(verdictTitle)}&case=${encodeURIComponent('№ КРМ-' + (decreeId || '777').toUpperCase().slice(0, 5))}`;
 
     let sent = false;
+
+    // 1. Fetch image buffer from OG endpoint and send as genuine multipart/form-data photo
     try {
-      const tgRes = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          chat_id: targetChat,
-          photo: photoUrl,
-          caption: caption,
-          parse_mode: 'HTML',
-          reply_markup: { inline_keyboard: inlineKeyboard },
-        }),
-      });
-      const tgData = await tgRes.json();
-      sent = tgData.ok;
+      const imgRes = await fetch(ogImageUrl);
+      if (imgRes.ok) {
+        const imgArrayBuffer = await imgRes.arrayBuffer();
+        const imgBuffer = Buffer.from(imgArrayBuffer);
+
+        const formData = new FormData();
+        formData.append('chat_id', targetChat.toString());
+        formData.append('caption', caption);
+        formData.append('parse_mode', 'HTML');
+        formData.append(
+          'photo',
+          new Blob([imgBuffer], { type: 'image/png' }),
+          `${isDark ? 'curse' : 'blessing'}_decree.png`
+        );
+
+        const sendPhotoRes = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, {
+          method: 'POST',
+          body: formData,
+        });
+
+        const data = await sendPhotoRes.json();
+        sent = data.ok;
+      }
     } catch {
       sent = false;
     }
 
+    // 2. Fallback to direct static parchment photo if buffer fetch failed
+    if (!sent) {
+      const fallbackPhotoUrl = isDark
+        ? `${BASE_URL}/assets/certificates/dark_parchment.jpg`
+        : `${BASE_URL}/assets/certificates/celestial_parchment.jpg`;
+
+      try {
+        const res = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            chat_id: targetChat,
+            photo: fallbackPhotoUrl,
+            caption: caption,
+            parse_mode: 'HTML',
+          }),
+        });
+        const d = await res.json();
+        sent = d.ok;
+      } catch {
+        sent = false;
+      }
+    }
+
+    // 3. Final text fallback if photo sending is blocked by privacy settings
     if (!sent) {
       const msgRes = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
         method: 'POST',
@@ -80,11 +117,10 @@ export async function POST(req: NextRequest) {
           chat_id: targetChat,
           text: caption,
           parse_mode: 'HTML',
-          reply_markup: { inline_keyboard: inlineKeyboard },
         }),
       });
-      const msgData = await msgRes.json();
-      return NextResponse.json({ success: msgData.ok, data: msgData });
+      const mData = await msgRes.json();
+      return NextResponse.json({ success: mData.ok, data: mData });
     }
 
     return NextResponse.json({ success: true });

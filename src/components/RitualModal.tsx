@@ -293,6 +293,27 @@ export const RitualModal: React.FC<RitualModalProps> = ({
       // ignore
     }
 
+    // Scenario A: If recipient is from squad or has Telegram username, send directly to recipient via Bot
+    if (newVerdict.telegramUsername) {
+      try {
+        fetch('/api/telegram/notify', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            recipientUsername: newVerdict.telegramUsername,
+            realm: newVerdict.realm,
+            targetName: newVerdict.targetName,
+            actionText: newVerdict.actionText,
+            verdictTitle: newVerdict.verdictTitle,
+            verdictText: newVerdict.verdictText,
+            decreeId: newVerdict.id,
+          }),
+        }).catch(() => {});
+      } catch {
+        // ignore
+      }
+    }
+
     if (selectedSquad) {
       squadStore.recordSquadDecree(selectedSquad.id, targetName, realm);
     }

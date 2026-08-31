@@ -102,42 +102,42 @@ export const CurseCertificate: React.FC<CurseCertificateProps> = ({
     setIsSending(true);
     onShowToast('🚀 Отправляем фото грамоты в Telegram...', 'info');
 
-    const profile = karmaStore.getProfile();
-    const currentChatId = profile.telegramUser?.id;
     const targetUsername = verdict.telegramUsername;
+    const isDirectSquadMember = Boolean(targetUsername);
 
-    // 1. Trigger bot sendPhoto in background
-    try {
-      await fetch('/api/telegram/notify', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          chatId: currentChatId,
-          username: targetUsername,
-          realm: verdict.realm,
-          targetName: verdict.targetName,
-          actionText: verdict.actionText,
-          verdictTitle: verdict.verdictTitle,
-          verdictText: verdict.verdictText,
-          decreeId: verdict.id,
-        }),
-      });
-    } catch {
-      // ignore
+    if (isDirectSquadMember) {
+      // Scenario A: Direct squad member -> bot sends photo directly to recipient
+      onShowToast(`🕊️ Анонимное фото грамоты отправлено @${targetUsername}!`, 'success');
+      try {
+        await fetch('/api/telegram/notify', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            recipientUsername: targetUsername,
+            realm: verdict.realm,
+            targetName: verdict.targetName,
+            actionText: verdict.actionText,
+            verdictTitle: verdict.verdictTitle,
+            verdictText: verdict.verdictText,
+            decreeId: verdict.id,
+          }),
+        });
+      } catch {
+        // ignore
+      }
+      setIsSending(false);
+      return;
     }
 
+    // Scenario B: Non-squad / manual name -> Redirect to Telegram picker with ready photo
+    onShowToast('🚀 Переходим в Telegram для выбора чата...', 'info');
     setIsSending(false);
 
-    // 2. If in Telegram Mini App: use native switchInlineQuery to send PHOTO into any chat
-    if (typeof window !== 'undefined' && (window as any).Telegram?.WebApp) {
-      const tg = (window as any).Telegram.WebApp;
-      if (tg.switchInlineQuery) {
-        tg.switchInlineQuery(verdict.id, ['users', 'groups', 'channels']);
-        return;
-      }
+    if (typeof window !== 'undefined' && (window as any).Telegram?.WebApp?.switchInlineQuery) {
+      (window as any).Telegram.WebApp.switchInlineQuery(verdict.id, ['users', 'groups', 'channels']);
+      return;
     }
 
-    // 3. Fallback: Direct bot delivery deep link
     const botDeepLink = `https://t.me/proklinator_bot?start=c_${verdict.id}`;
     if (typeof window !== 'undefined' && (window as any).Telegram?.WebApp?.openTelegramLink) {
       (window as any).Telegram.WebApp.openTelegramLink(botDeepLink);
