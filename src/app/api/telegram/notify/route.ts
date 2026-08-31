@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { usernameToChatIdMap } from '@/app/api/profile/route';
 
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || '8633526756:AAG_RC5hwERAZ_fhX_Gq59Sz8iMpGa-0LcU';
 const BASE_URL = 'https://proklinator-online.vercel.app';
@@ -24,15 +25,27 @@ export async function POST(req: NextRequest) {
 
     const isDark = realm === 'dark';
     
-    // Target recipient: prioritize recipient from squad, then target username, then fallback
-    const targetChat =
-      recipientId ||
-      chatId ||
-      (recipientUsername ? `@${recipientUsername.replace(/^@/, '')}` : null) ||
-      (username ? `@${username.replace(/^@/, '')}` : null);
+    // Resolve numeric targetChat
+    let targetChat: number | string | null = null;
 
+    if (recipientId && !isNaN(Number(recipientId))) {
+      targetChat = Number(recipientId);
+    } else if (chatId && !isNaN(Number(chatId))) {
+      targetChat = Number(chatId);
+    } else {
+      const uName = (recipientUsername || username || '').replace(/^@/, '').toLowerCase().trim();
+      if (uName && usernameToChatIdMap.has(uName)) {
+        targetChat = usernameToChatIdMap.get(uName)!;
+      }
+    }
+
+    // If user has not started the bot or numeric chat_id is unknown
     if (!targetChat) {
-      return NextResponse.json({ success: false, error: 'No recipient specified' }, { status: 400 });
+      return NextResponse.json({
+        success: false,
+        notStarted: true,
+        message: 'Recipient has not started the bot yet or chat ID unknown',
+      });
     }
 
     // Clean anonymous caption under the photo
@@ -50,7 +63,6 @@ export async function POST(req: NextRequest) {
         `<i>«${verdictText}»</i>\n\n` +
         `🏛️ <i>Заверено небесной канцелярией • Доставлено анонимно</i>`;
 
-    // High-resolution certificate image URL
     const ogImageUrl = `${BASE_URL}/api/og?realm=${realm}&name=${encodeURIComponent(targetName)}&sin=${encodeURIComponent(actionText)}&curse=${encodeURIComponent(verdictText)}&title=${encodeURIComponent(verdictTitle)}&case=${encodeURIComponent('№ КРМ-' + (decreeId || '777').toUpperCase().slice(0, 5))}`;
 
     let sent = false;
@@ -108,7 +120,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // 3. Final text fallback if photo sending is blocked by privacy settings
+    // 3. Text fallback
     if (!sent) {
       const msgRes = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
         method: 'POST',

@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { UserKarmaProfile } from '@/types';
 
-// In-memory persistent registry for user profiles by telegramId or username
-const userProfilesRegistry = new Map<string, UserKarmaProfile>();
+// Global server mappings
+export const userProfilesRegistry = new Map<string, UserKarmaProfile>();
+export const usernameToChatIdMap = new Map<string, number>();
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
@@ -25,12 +26,23 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const { userId, username, profile } = body;
 
-    const key = (userId || username || '').toString().toLowerCase().trim();
-    if (!key || !profile) {
-      return NextResponse.json({ success: false, error: 'Missing key or profile' }, { status: 400 });
+    if (userId) {
+      const numId = typeof userId === 'number' ? userId : parseInt(userId, 10);
+      if (!isNaN(numId)) {
+        userProfilesRegistry.set(numId.toString(), profile);
+        if (username) {
+          const cleanUsername = username.replace(/^@/, '').toLowerCase().trim();
+          usernameToChatIdMap.set(cleanUsername, numId);
+          userProfilesRegistry.set(cleanUsername, profile);
+        }
+      }
     }
 
-    userProfilesRegistry.set(key, profile);
+    if (username) {
+      const cleanUsername = username.replace(/^@/, '').toLowerCase().trim();
+      userProfilesRegistry.set(cleanUsername, profile);
+    }
+
     return NextResponse.json({ success: true });
   } catch (err: unknown) {
     const errorMsg = err instanceof Error ? err.message : 'Unknown error';

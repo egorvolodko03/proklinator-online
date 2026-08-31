@@ -94,22 +94,23 @@ export const CurseCertificate: React.FC<CurseCertificateProps> = ({
   };
 
   /**
-   * Dispatches the photo of the certificate directly via Telegram Bot & Inline Query
+   * Dispatches the photo of the certificate via direct bot notification (Scenario A) or Telegram share picker (Scenario B)
    */
   const handleSendPhotoToTelegram = async () => {
     sound.playGoldenBell();
     triggerHaptic('success');
     setIsSending(true);
-    onShowToast('🚀 Отправляем фото грамоты в Telegram...', 'info');
 
     const targetUsername = verdict.telegramUsername;
     const isDirectSquadMember = Boolean(targetUsername);
+    const shortUrl = getCleanShortUrl();
+    const caption = getFormattedCaption();
+    const tgShareUrl = `https://t.me/share/url?url=${encodeURIComponent(shortUrl)}&text=${encodeURIComponent(caption)}`;
 
     if (isDirectSquadMember) {
-      // Scenario A: Direct squad member -> bot sends photo directly to recipient
-      onShowToast(`🕊️ Анонимное фото грамоты отправлено @${targetUsername}!`, 'success');
+      onShowToast(`🚀 Отправляем фото грамоты @${targetUsername}...`, 'info');
       try {
-        await fetch('/api/telegram/notify', {
+        const res = await fetch('/api/telegram/notify', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -122,27 +123,34 @@ export const CurseCertificate: React.FC<CurseCertificateProps> = ({
             decreeId: verdict.id,
           }),
         });
+
+        const data = await res.json();
+        setIsSending(false);
+
+        if (data.success) {
+          onShowToast(`🕊️ Анонимное фото грамоты успешно отправлено @${targetUsername}!`, 'success');
+          return;
+        } else if (data.notStarted) {
+          onShowToast(`@${targetUsername} еще не запустил бота. Открываем Telegram для отправки...`, 'info');
+        }
       } catch {
-        // ignore
+        setIsSending(false);
       }
+    } else {
       setIsSending(false);
-      return;
+      onShowToast('🚀 Открываем Telegram для выбора чата...', 'info');
     }
 
-    // Scenario B: Non-squad / manual name -> Redirect to Telegram picker with ready photo
-    onShowToast('🚀 Переходим в Telegram для выбора чата...', 'info');
-    setIsSending(false);
-
+    // Scenario B: Open Telegram Share Picker / Mini App switchInlineQuery
     if (typeof window !== 'undefined' && (window as any).Telegram?.WebApp?.switchInlineQuery) {
       (window as any).Telegram.WebApp.switchInlineQuery(verdict.id, ['users', 'groups', 'channels']);
       return;
     }
 
-    const botDeepLink = `https://t.me/proklinator_bot?start=c_${verdict.id}`;
     if (typeof window !== 'undefined' && (window as any).Telegram?.WebApp?.openTelegramLink) {
-      (window as any).Telegram.WebApp.openTelegramLink(botDeepLink);
+      (window as any).Telegram.WebApp.openTelegramLink(tgShareUrl);
     } else {
-      window.open(botDeepLink, '_blank');
+      window.open(tgShareUrl, '_blank');
     }
   };
 
