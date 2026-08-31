@@ -1,8 +1,8 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Sparkles, Coins, Gift, Flame, Trophy, Check, RefreshCw, Lock } from 'lucide-react';
+import { X, Sparkles, Coins, Gift, Flame, Trophy, Check, RefreshCw, Lock, Clock } from 'lucide-react';
 import { sound } from '@/lib/audio';
 import { triggerHaptic } from '@/lib/telegram';
 import { karmaStore } from '@/lib/karmaStore';
@@ -28,6 +28,14 @@ export const AltarRouletteModal: React.FC<AltarRouletteModalProps> = ({
   const [wonPrize, setWonPrize] = useState<GachaPrize | null>(null);
   const [highlightIdx, setHighlightIdx] = useState<number>(0);
 
+  useEffect(() => {
+    const unsub = karmaStore.subscribe(() => {
+      setProfile(karmaStore.getProfile());
+    });
+    setProfile(karmaStore.getProfile());
+    return unsub;
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
   const todayStr = new Date().toDateString();
@@ -48,7 +56,9 @@ export const AltarRouletteModal: React.FC<AltarRouletteModalProps> = ({
       return;
     }
 
-    if (spinCost > 0) {
+    if (isFreeDaily) {
+      karmaStore.recordDailySpin();
+    } else {
       karmaStore.addCoins(-spinCost);
     }
 
@@ -169,6 +179,8 @@ export const AltarRouletteModal: React.FC<AltarRouletteModalProps> = ({
             className={`w-full py-3.5 sm:py-4 rounded-2xl font-heading text-sm sm:text-base font-bold text-void-950 transition-all active:scale-95 flex items-center justify-center gap-2 ${
               isSpinning
                 ? 'bg-void-800 text-zinc-500 cursor-not-allowed'
+                : isFreeDaily
+                ? 'bg-gradient-to-r from-emerald-400 via-karma-gold to-emerald-500 shadow-glow-gold hover:brightness-110 hover:scale-[1.02]'
                 : 'bg-gradient-to-r from-amber-400 via-karma-gold to-amber-500 shadow-glow-gold hover:brightness-110 hover:scale-[1.02]'
             }`}
           >
@@ -179,16 +191,23 @@ export const AltarRouletteModal: React.FC<AltarRouletteModalProps> = ({
               </>
             ) : isFreeDaily ? (
               <>
-                <Gift className="w-5 h-5 text-void-950" />
-                <span>Бесплатное ежедневное вращение</span>
+                <Gift className="w-5 h-5 text-void-950 animate-bounce" />
+                <span>Бесплатное ежедневное вращение (1/1)</span>
               </>
             ) : (
               <>
                 <Coins className="w-5 h-5 text-void-950" />
-                <span>Вращать Алтарь за 20 🪙</span>
+                <span>Вращать Алтарь за 20 🪙 (Бесплатное завтра)</span>
               </>
             )}
           </button>
+
+          {!isFreeDaily && (
+            <div className="mt-2 text-[11px] text-zinc-400 font-sans flex items-center justify-center gap-1.5">
+              <Clock className="w-3.5 h-3.5 text-karma-gold" />
+              <span>Бесплатное вращение обновится в 00:00 (МСК)</span>
+            </div>
+          )}
         </div>
 
         {/* User Balance Hint */}

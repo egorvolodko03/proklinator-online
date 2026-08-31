@@ -209,6 +209,12 @@ export class KarmaStore {
     return false;
   }
 
+  public recordDailySpin() {
+    this.profile.lastDailySpinDate = new Date().toDateString();
+    this.save();
+    this.notify();
+  }
+
   public async syncWithCloud() {
     if (!this.profile.telegramUser) return;
     const userKey = this.profile.telegramUser.id.toString();
@@ -220,6 +226,8 @@ export class KarmaStore {
         this.profile = {
           ...this.profile,
           ...data.profile,
+          coins: Math.max(this.profile.coins, data.profile.coins ?? 0),
+          experience: Math.max(this.profile.experience, data.profile.experience ?? 0),
           isAuthorized: true,
           telegramUser: this.profile.telegramUser,
         };
