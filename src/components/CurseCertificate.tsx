@@ -95,7 +95,7 @@ export const CurseCertificate: React.FC<CurseCertificateProps> = ({
   };
 
   /**
-   * Dispatches the photo of the certificate directly via bot DM or Telegram share picker
+   * Dispatches the genuine rendered photo of the certificate directly via bot DM or Telegram share
    */
   const handleSendPhotoToTelegram = async () => {
     sound.playGoldenBell();
@@ -109,15 +109,29 @@ export const CurseCertificate: React.FC<CurseCertificateProps> = ({
     const shortUrl = getCleanShortUrl();
     const caption = getFormattedCaption();
     const tgShareUrl = `https://t.me/share/url?url=${encodeURIComponent(shortUrl)}&text=${encodeURIComponent(caption)}`;
+    const tgAppUrl = `tg://msg_url?url=${encodeURIComponent(shortUrl)}&text=${encodeURIComponent(caption)}`;
+
+    // Render exact image of certificate from DOM
+    let imageBase64: string | undefined = undefined;
+    if (certRef.current) {
+      try {
+        imageBase64 = await toPng(certRef.current, {
+          cacheBust: true,
+          quality: 0.95,
+          pixelRatio: 2,
+          backgroundColor: '#09090b',
+        });
+      } catch {
+        // ignore
+      }
+    }
 
     // 1. Resolve numeric recipient Telegram ID
     let resolvedRecipientId: number | null = null;
 
     if (cleanTargetUsername && cleanTargetUsername === cleanMyUsername && profile.telegramUser?.id) {
-      // User sending to themselves
       resolvedRecipientId = profile.telegramUser.id;
     } else if (cleanTargetUsername) {
-      // Search in joined squads for this username's numeric ID
       const squads = squadStore.getSquads();
       for (const s of squads) {
         const found = s.members.find(
@@ -133,9 +147,9 @@ export const CurseCertificate: React.FC<CurseCertificateProps> = ({
       }
     }
 
-    // Scenario A: Recipient has known numeric ID -> direct Bot DM sendPhoto
+    // Scenario A: Recipient is squad member / self with known numeric ID -> direct Bot DM sendPhoto
     if (resolvedRecipientId) {
-      onShowToast(`🚀 Отправляем фото грамоты в личный чат Telegram...`, 'info');
+      onShowToast(`🚀 Отправляем готовую фото-грамоту в Telegram...`, 'info');
       try {
         const res = await fetch('/api/telegram/notify', {
           method: 'POST',
@@ -149,6 +163,7 @@ export const CurseCertificate: React.FC<CurseCertificateProps> = ({
             verdictTitle: verdict.verdictTitle,
             verdictText: verdict.verdictText,
             decreeId: verdict.id,
+            imageBase64: imageBase64,
           }),
         });
 
@@ -156,7 +171,7 @@ export const CurseCertificate: React.FC<CurseCertificateProps> = ({
         setIsSending(false);
 
         if (data.success) {
-          onShowToast(`🕊️ Грамота-фото успешно доставлена в Telegram!`, 'success');
+          onShowToast(`🕊️ Финальная фото-грамота успешно доставлена в Telegram!`, 'success');
           return;
         }
       } catch {
@@ -164,11 +179,11 @@ export const CurseCertificate: React.FC<CurseCertificateProps> = ({
       }
     }
 
-    // Scenario B: External recipient / unlinked -> Direct Telegram Share Picker
+    // Scenario B: External recipient -> Immediate redirection to Telegram share
     setIsSending(false);
-    onShowToast('🚀 Открываем Telegram для выбора получателя...', 'info');
+    onShowToast('🚀 Переходим в Telegram для отправки грамоты...', 'info');
 
-    // In Telegram Mini App
+    // If inside Telegram Mini App
     if (typeof window !== 'undefined' && (window as any).Telegram?.WebApp) {
       const tg = (window as any).Telegram.WebApp;
       if (tg.openTelegramLink) {
@@ -177,8 +192,16 @@ export const CurseCertificate: React.FC<CurseCertificateProps> = ({
       }
     }
 
-    // Direct Browser Navigation (avoids popup blockers)
-    if (typeof window !== 'undefined') {
+    // Direct Browser Execution via safe anchor click
+    try {
+      const a = document.createElement('a');
+      a.href = tgShareUrl;
+      a.target = '_blank';
+      a.rel = 'noopener noreferrer';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    } catch {
       window.location.href = tgShareUrl;
     }
   };
@@ -358,7 +381,7 @@ export const CurseCertificate: React.FC<CurseCertificateProps> = ({
           className="w-full flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-sky-500 via-sky-600 to-blue-600 px-6 py-3.5 text-sm sm:text-base font-bold text-white shadow-[0_0_30px_rgba(14,165,233,0.4)] hover:scale-[1.02] active:scale-95 transition-all font-heading disabled:opacity-75"
         >
           <Send className="w-5 h-5" />
-          <span>{isSending ? 'Отправка...' : 'Отправить фото в Telegram'}</span>
+          <span>{isSending ? 'Подготовка и отправка...' : 'Отправить фото в Telegram'}</span>
         </button>
 
         {/* Secondary Actions Row */}

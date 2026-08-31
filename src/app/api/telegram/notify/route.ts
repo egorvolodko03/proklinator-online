@@ -5,7 +5,7 @@ const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || '8633526756:AAG_RC5hwERAZ_fh
 const BASE_URL = 'https://proklinator-online.vercel.app';
 
 /**
- * Serverless Telegram Bot Notifier using direct multipart photo delivery
+ * Serverless Telegram Bot Notifier using direct client-rendered PNG or OG buffer
  */
 export async function POST(req: NextRequest) {
   try {
@@ -21,10 +21,11 @@ export async function POST(req: NextRequest) {
       verdictTitle,
       verdictText,
       decreeId,
+      imageBase64,
     } = body;
 
     const isDark = realm === 'dark';
-    
+
     // Resolve numeric targetChat
     let targetChat: number | string | null = null;
 
@@ -63,16 +64,13 @@ export async function POST(req: NextRequest) {
         `<i>«${verdictText}»</i>\n\n` +
         `🏛️ <i>Заверено небесной канцелярией • Доставлено анонимно</i>`;
 
-    const ogImageUrl = `${BASE_URL}/api/og?realm=${realm}&name=${encodeURIComponent(targetName)}&sin=${encodeURIComponent(actionText)}&curse=${encodeURIComponent(verdictText)}&title=${encodeURIComponent(verdictTitle)}&case=${encodeURIComponent('№ КРМ-' + (decreeId || '777').toUpperCase().slice(0, 5))}`;
-
     let sent = false;
 
-    // 1. Fetch image buffer from OG endpoint and send as genuine multipart/form-data photo
-    try {
-      const imgRes = await fetch(ogImageUrl);
-      if (imgRes.ok) {
-        const imgArrayBuffer = await imgRes.arrayBuffer();
-        const imgBuffer = Buffer.from(imgArrayBuffer);
+    // 1. If client provided base64 rendered PNG of the certificate, use it directly!
+    if (imageBase64 && typeof imageBase64 === 'string') {
+      try {
+        const cleanBase64 = imageBase64.replace(/^data:image\/\w+;base64,/, '');
+        const imgBuffer = Buffer.from(cleanBase64, 'base64');
 
         const formData = new FormData();
         formData.append('chat_id', targetChat.toString());
@@ -91,36 +89,44 @@ export async function POST(req: NextRequest) {
 
         const data = await sendPhotoRes.json();
         sent = data.ok;
-      }
-    } catch {
-      sent = false;
-    }
-
-    // 2. Fallback to direct static parchment photo if buffer fetch failed
-    if (!sent) {
-      const fallbackPhotoUrl = isDark
-        ? `${BASE_URL}/assets/certificates/dark_parchment.jpg`
-        : `${BASE_URL}/assets/certificates/celestial_parchment.jpg`;
-
-      try {
-        const res = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            chat_id: targetChat,
-            photo: fallbackPhotoUrl,
-            caption: caption,
-            parse_mode: 'HTML',
-          }),
-        });
-        const d = await res.json();
-        sent = d.ok;
       } catch {
         sent = false;
       }
     }
 
-    // 3. Text fallback
+    // 2. If base64 not provided or failed, fetch from dynamic OG generator
+    if (!sent) {
+      const ogImageUrl = `${BASE_URL}/api/og?realm=${realm}&name=${encodeURIComponent(targetName)}&sin=${encodeURIComponent(actionText)}&curse=${encodeURIComponent(verdictText)}&title=${encodeURIComponent(verdictTitle)}&case=${encodeURIComponent('№ КРМ-' + (decreeId || '777').toUpperCase().slice(0, 5))}`;
+      try {
+        const imgRes = await fetch(ogImageUrl);
+        if (imgRes.ok) {
+          const imgArrayBuffer = await imgRes.arrayBuffer();
+          const imgBuffer = Buffer.from(imgArrayBuffer);
+
+          const formData = new FormData();
+          formData.append('chat_id', targetChat.toString());
+          formData.append('caption', caption);
+          formData.append('parse_mode', 'HTML');
+          formData.append(
+            'photo',
+            new Blob([imgBuffer], { type: 'image/png' }),
+            `${isDark ? 'curse' : 'blessing'}_decree.png`
+          );
+
+          const sendPhotoRes = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, {
+            method: 'POST',
+            body: formData,
+          });
+
+          const data = await sendPhotoRes.json();
+          sent = data.ok;
+        }
+      } catch {
+        sent = false;
+      }
+    }
+
+    // 3. Fallback text if privacy settings block photo
     if (!sent) {
       const msgRes = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
         method: 'POST',
