@@ -1,9 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { UserKarmaProfile } from '@/types';
-
-// Global server mappings
-export const userProfilesRegistry = new Map<string, UserKarmaProfile>();
-export const usernameToChatIdMap = new Map<string, number>();
+import { userProfilesRegistry, usernameToChatIdMap } from '@/lib/userRegistryStore';
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);

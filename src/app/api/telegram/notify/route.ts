@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { usernameToChatIdMap } from '@/app/api/profile/route';
+import { usernameToChatIdMap } from '@/lib/userRegistryStore';
 
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || '8633526756:AAG_RC5hwERAZ_fhX_Gq59Sz8iMpGa-0LcU';
 const BASE_URL = 'https://proklinator-online.vercel.app';
