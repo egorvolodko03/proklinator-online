@@ -743,52 +743,31 @@ export const RitualModal: React.FC<RitualModalProps> = ({
                     <span>Назад</span>
                   </button>
 
-                  {/* Interactive Hold-to-Stamp Button */}
-                  <div className="relative flex flex-col items-end">
-                    <button
-                      type="button"
-                      onMouseDown={startHolding}
-                      onMouseUp={stopHolding}
-                      onMouseLeave={stopHolding}
-                      onTouchStart={startHolding}
-                      onTouchEnd={stopHolding}
-                      onClick={() => {
-                        if (!isHolding && holdProgress === 0) {
-                          handleStartRitual();
-                        }
-                      }}
-                      className={`relative overflow-hidden flex items-center justify-center gap-2.5 rounded-2xl px-6 py-3 text-xs sm:text-sm font-bold transition-all font-heading select-none active:scale-95 shadow-xl ${
-                        isDark
-                          ? 'bg-gradient-to-r from-inferno-700 via-inferno-600 to-amber-600 text-white shadow-glow-crimson'
-                          : 'bg-gradient-to-r from-amber-400 via-emerald-400 to-sky-400 text-void-950 shadow-glow-gold'
-                      }`}
-                    >
-                      {/* Live Fill Progress Indicator */}
-                      <motion.div
-                        className="absolute inset-0 bg-white/30 pointer-events-none origin-left"
-                        style={{ width: `${holdProgress}%` }}
-                      />
-
-                      {/* Icon */}
-                      {isDark ? (
-                        <Flame className={`w-4 h-4 relative z-10 ${isHolding ? 'animate-bounce text-yellow-300' : 'text-yellow-400'}`} />
-                      ) : (
-                        <Sun className={`w-4 h-4 relative z-10 ${isHolding ? 'animate-spin text-void-950' : 'text-void-950'}`} />
-                      )}
-
-                      <span className="relative z-10 font-black tracking-wide">
-                        {isHolding
-                          ? `Запечатывание... ${holdProgress}%`
-                          : isDark
-                          ? '🔥 Удерживайте для наложения кары'
-                          : '✨ Удерживайте для благодати'}
-                      </span>
-                    </button>
-
-                    <span className="text-[10px] text-zinc-500 font-mono mt-1 pr-1">
-                      (Удерживайте 1 сек. или нажмите)
+                  {/* Instant 1-Click Seal Button */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      sound.playSealStamp();
+                      triggerHaptic('heavy');
+                      setIsShaking(true);
+                      setTimeout(() => setIsShaking(false), 400);
+                      handleStartRitual();
+                    }}
+                    className={`relative flex items-center justify-center gap-2.5 rounded-2xl px-6 py-3.5 text-xs sm:text-sm font-bold transition-all font-heading hover:scale-105 active:scale-95 shadow-xl ${
+                      isDark
+                        ? 'bg-gradient-to-r from-inferno-700 via-inferno-600 to-amber-600 text-white shadow-glow-crimson'
+                        : 'bg-gradient-to-r from-amber-400 via-emerald-400 to-sky-400 text-void-950 shadow-glow-gold'
+                    }`}
+                  >
+                    {isDark ? (
+                      <Flame className="w-4 h-4 text-yellow-300 animate-pulse" />
+                    ) : (
+                      <Sun className="w-4 h-4 text-void-950 animate-pulse" />
+                    )}
+                    <span className="font-black tracking-wide">
+                      {isDark ? '🔥 Утвердить печать' : '✨ Ниспослать благодать'}
                     </span>
-                  </div>
+                  </button>
                 </div>
               </motion.div>
             )}

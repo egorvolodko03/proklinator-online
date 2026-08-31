@@ -2,12 +2,12 @@
 
 import React, { useRef, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Download, Copy, Send, RotateCcw, Flame, Sun, Check, ShieldAlert, Sparkles, Heart, Share2, SendHorizonal, Image as ImageIcon } from 'lucide-react';
+import { Download, Copy, Send, RotateCcw, Flame, Sun, Check, ShieldAlert, Sparkles, Heart, Share2, ImageIcon } from 'lucide-react';
 import { DecreeVerdict } from '@/types';
 import { CATEGORY_LABELS } from '@/lib/utils';
 import { sound } from '@/lib/audio';
 import { triggerHaptic } from '@/lib/telegram';
-import { toPng } from 'html-to-image';
+import { toPng, toBlob } from 'html-to-image';
 
 interface CurseCertificateProps {
   verdict: DecreeVerdict;
@@ -22,15 +22,21 @@ export const CurseCertificate: React.FC<CurseCertificateProps> = ({
 }) => {
   const certRef = useRef<HTMLDivElement | null>(null);
   const [isDownloading, setIsDownloading] = useState(false);
+  const [isSharingPhoto, setIsSharingPhoto] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
 
   const isDark = verdict.realm === 'dark';
   const categoryInfo = CATEGORY_LABELS[verdict.category] || CATEGORY_LABELS.other;
 
-  // Ultra-clean 35-character short URL with OpenGraph Photo Card
   const getCleanShortUrl = () => {
     if (typeof window === 'undefined') return `https://proklinator-online.vercel.app/c/${verdict.id}`;
     return `${window.location.origin}/c/${verdict.id}`;
+  };
+
+  const getFormattedCaption = () => {
+    return isDark
+      ? `⚖️ ТЕМНАЯ КАНЦЕЛЯРИЯ КАРМЫ\n📜 Официальный приговор: «${verdict.targetName}»\n\n⚡ Вменяемое деяние: «${verdict.actionText}»\n🩸 Приговор: «${verdict.verdictText}»\n\n🏛️ Заверено печатью: ${verdict.clerkSignature}`
+      : `✨ НЕБЕСНАЯ КАНЦЕЛЯРИЯ БЛАГОДАТИ\n📜 Грамота признания: «${verdict.targetName}»\n\n🌟 Добрый поступок: «${verdict.actionText}»\n🕊️ Благословение: «${verdict.verdictText}»\n\n🏛️ Заверено печатью: ${verdict.clerkSignature}`;
   };
 
   const handleCopyLink = async () => {
@@ -87,33 +93,69 @@ export const CurseCertificate: React.FC<CurseCertificateProps> = ({
   };
 
   /**
-   * Direct Telegram Share Picker with Clean Short URL & Photo Card Preview
+   * Sends the certificate as an actual high-resolution PHOTO (PNG image file) with caption
    */
-  const handleShareToTelegramDirectly = () => {
+  const handleSharePhotoDirectly = async () => {
+    if (!certRef.current) return;
     sound.playGoldenBell();
-    triggerHaptic('success');
+    triggerHaptic('medium');
+    setIsSharingPhoto(true);
+    onShowToast('📸 Формируем фото грамоты для отправки...', 'info');
 
-    const shortUrl = getCleanShortUrl();
-    const formattedText = isDark
-      ? `⚖️ ТЕМНАЯ КАНЦЕЛЯРИЯ КАРМЫ\n📜 Официальный приговор: «${verdict.targetName}»\n\n⚡ Вменяемое деяние: «${verdict.actionText}»\n🩸 Приговор: «${verdict.verdictText}»\n\n🏛️ Заверено печатью: ${verdict.clerkSignature}`
-      : `✨ НЕБЕСНАЯ КАНЦЕЛЯРИЯ БЛАГОДАТИ\n📜 Грамота признания: «${verdict.targetName}»\n\n🌟 Добрый поступок: «${verdict.actionText}»\n🕊️ Благословение: «${verdict.verdictText}»\n\n🏛️ Заверено печатью: ${verdict.clerkSignature}`;
+    try {
+      const blob = await toBlob(certRef.current, {
+        cacheBust: true,
+        quality: 0.98,
+        pixelRatio: 2,
+        backgroundColor: '#09090b',
+      });
 
-    const tgShareUrl = `https://t.me/share/url?url=${encodeURIComponent(shortUrl)}&text=${encodeURIComponent(formattedText)}`;
-
-    // In Telegram Mini App, use official native telegram open
-    if (typeof window !== 'undefined' && (window as any).Telegram?.WebApp?.openTelegramLink) {
-      try {
-        (window as any).Telegram.WebApp.openTelegramLink(tgShareUrl);
-        onShowToast('🚀 Открываем выбор получателя в Telegram...', 'success');
-        return;
-      } catch {
-        // fallback
+      if (!blob) {
+        throw new Error('Failed to generate image blob');
       }
-    }
 
-    // Direct browser navigation to Telegram Share Picker
-    window.open(tgShareUrl, '_blank');
-    onShowToast('🚀 Переходим в Telegram к выбору получателя...', 'success');
+      const fileName = `${isDark ? 'Gramota-Karmy' : 'Gramota-Blagodati'}.png`;
+      const file = new File([blob], fileName, { type: 'image/png' });
+      const caption = getFormattedCaption();
+
+      // Check if browser / Telegram WebView supports Native File Sharing
+      if (typeof navigator !== 'undefined' && navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({
+          files: [file],
+          title: isDark ? 'Грамота Проклятия' : 'Грамота Благодати',
+          text: caption,
+        });
+        sound.playVerdictChime();
+        triggerHaptic('success');
+        onShowToast('🚀 Грамота успешно отправлена!', 'success');
+        return;
+      }
+
+      // Fallback: Copy image to clipboard and trigger Telegram link
+      try {
+        if (navigator.clipboard && (window as any).ClipboardItem) {
+          const item = new (window as any).ClipboardItem({ 'image/png': blob });
+          await navigator.clipboard.write([item]);
+          onShowToast('📋 Фото скопировано в буфер обмена! Вставьте его в чат.', 'success');
+        }
+      } catch {
+        // ignore
+      }
+
+      const shortUrl = getCleanShortUrl();
+      const tgShareUrl = `https://t.me/share/url?url=${encodeURIComponent(shortUrl)}&text=${encodeURIComponent(caption)}`;
+
+      if (typeof window !== 'undefined' && (window as any).Telegram?.WebApp?.openTelegramLink) {
+        (window as any).Telegram.WebApp.openTelegramLink(tgShareUrl);
+      } else {
+        window.open(tgShareUrl, '_blank');
+      }
+    } catch (err) {
+      console.error('Share photo error:', err);
+      onShowToast('Не удалось отправить фото напрямую', 'error');
+    } finally {
+      setIsSharingPhoto(false);
+    }
   };
 
   return (
@@ -124,8 +166,8 @@ export const CurseCertificate: React.FC<CurseCertificateProps> = ({
           ref={certRef}
           style={{
             backgroundImage: isDark
-              ? 'radial-gradient(circle at 50% 50%, rgba(9, 9, 11, 0.86), rgba(9, 9, 11, 0.95)), url(/assets/certificates/dark_parchment.jpg)'
-              : 'radial-gradient(circle at 50% 50%, rgba(15, 23, 42, 0.84), rgba(9, 9, 11, 0.94)), url(/assets/certificates/celestial_parchment.jpg)',
+              ? 'radial-gradient(circle at 50% 50%, rgba(9, 9, 11, 0.88), rgba(9, 9, 11, 0.96)), url(/assets/certificates/dark_parchment.jpg)'
+              : 'radial-gradient(circle at 50% 50%, rgba(15, 23, 42, 0.85), rgba(9, 9, 11, 0.94)), url(/assets/certificates/celestial_parchment.jpg)',
             backgroundSize: 'cover',
             backgroundPosition: 'center',
           }}
@@ -231,7 +273,7 @@ export const CurseCertificate: React.FC<CurseCertificateProps> = ({
             </div>
           </div>
 
-          {/* Footer & Wax Seal */}
+          {/* Footer & Robust 3D Wax Seal */}
           <div className="mt-4 sm:mt-6 flex items-center justify-between border-t border-karma-gold/20 pt-3 sm:pt-4">
             <div className="text-left">
               <div className="text-[9px] sm:text-[10px] font-mono text-zinc-500 uppercase">Секретарь:</div>
@@ -246,13 +288,37 @@ export const CurseCertificate: React.FC<CurseCertificateProps> = ({
               </div>
             </div>
 
-            {/* Glowing 3D Wax Seal Image with Transparent Background */}
-            <div className="relative h-14 w-14 sm:h-16 sm:w-16 transform rotate-6 hover:rotate-12 transition-transform">
-              <img
-                src={isDark ? '/assets/seals/tribunal_seal.png' : '/assets/seals/celestial_seal.png'}
-                alt="3D Wax Seal"
-                className="h-full w-full object-contain filter drop-shadow-[0_4px_12px_rgba(0,0,0,0.8)]"
-              />
+            {/* 3D Wax Seal Badge */}
+            <div className="relative flex items-center justify-center shrink-0">
+              <div
+                className={`relative h-16 w-16 sm:h-20 sm:w-20 rounded-full flex items-center justify-center p-1.5 transform rotate-6 hover:rotate-12 transition-transform shadow-[0_0_25px_rgba(251,191,36,0.5)] border-2 ${
+                  isDark
+                    ? 'border-red-500/80 bg-gradient-to-br from-red-700 via-red-900 to-black text-amber-200 ring-2 ring-red-500/40'
+                    : 'border-amber-400/90 bg-gradient-to-br from-amber-400 via-yellow-600 to-amber-900 text-void-950 ring-2 ring-amber-300/40'
+                }`}
+              >
+                {/* 3D PNG Overlay */}
+                <img
+                  src={isDark ? '/assets/seals/tribunal_seal.png' : '/assets/seals/celestial_seal.png'}
+                  alt="3D Wax Seal"
+                  className="absolute inset-0 h-full w-full object-contain rounded-full opacity-90 filter drop-shadow-md z-10"
+                />
+
+                {/* Inner Runic Seal Core */}
+                <div className="flex flex-col items-center justify-center text-center select-none z-0">
+                  <div className="text-[8px] font-mono font-black uppercase tracking-tighter">
+                    {isDark ? 'КАРМА' : 'ДОБРО'}
+                  </div>
+                  {isDark ? (
+                    <Flame className="w-3.5 h-3.5 text-yellow-300 my-0.5" />
+                  ) : (
+                    <Sun className="w-3.5 h-3.5 text-void-950 my-0.5" />
+                  )}
+                  <div className="text-[8px] font-mono font-black">
+                    {isDark ? '666' : '777'}
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -260,13 +326,14 @@ export const CurseCertificate: React.FC<CurseCertificateProps> = ({
 
       {/* Action Buttons */}
       <div className="mt-4 w-full max-w-xl px-2 space-y-2.5">
-        {/* Direct Telegram Share */}
+        {/* Direct Send Photo to Telegram */}
         <button
-          onClick={handleShareToTelegramDirectly}
-          className="w-full flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-sky-500 via-sky-600 to-blue-600 px-6 py-3.5 text-sm sm:text-base font-bold text-white shadow-[0_0_30px_rgba(14,165,233,0.4)] hover:scale-[1.02] active:scale-95 transition-all font-heading"
+          onClick={handleSharePhotoDirectly}
+          disabled={isSharingPhoto}
+          className="w-full flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-sky-500 via-sky-600 to-blue-600 px-6 py-3.5 text-sm sm:text-base font-bold text-white shadow-[0_0_30px_rgba(14,165,233,0.4)] hover:scale-[1.02] active:scale-95 transition-all font-heading disabled:opacity-75"
         >
           <Send className="w-5 h-5" />
-          <span>Отправить в Telegram</span>
+          <span>{isSharingPhoto ? 'Подготовка фото...' : 'Отправить фото в Telegram'}</span>
         </button>
 
         {/* Secondary Actions Row */}
