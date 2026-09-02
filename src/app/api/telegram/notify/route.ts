@@ -4,11 +4,44 @@ import { usernameToChatIdMap } from '@/lib/userRegistryStore';
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || '8633526756:AAG_RC5hwERAZ_fhX_Gq59Sz8iMpGa-0LcU';
 const BASE_URL = 'https://proklinator-online.vercel.app';
 
+// Rate limiting storage: key -> lastRequestTimestamp
+const rateLimitMap = new Map<string, number>();
+
+function escapeHtml(str: string): string {
+  return (str || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
 /**
  * Serverless Telegram Bot Notifier using direct client-rendered PNG or OG buffer
+ * Includes HTML injection protection and rate-limiting
  */
 export async function POST(req: NextRequest) {
   try {
+    const ip = req.headers.get('x-forwarded-for')?.split(',')[0] || 'unknown';
+    const now = Date.now();
+
+    // 1. Rate-limiting check (1 message per 2.5s per IP)
+    const lastRequest = rateLimitMap.get(ip) || 0;
+    if (now - lastRequest < 2500) {
+      return NextResponse.json(
+        { success: false, error: 'Слишком много запросов. Подождите 3 секунды.' },
+        { status: 429 }
+      );
+    }
+    rateLimitMap.set(ip, now);
+
+    // Periodic cleanup of rate limit map (keep size under control)
+    if (rateLimitMap.size > 1000) {
+      for (const [k, v] of rateLimitMap.entries()) {
+        if (now - v > 60000) rateLimitMap.delete(k);
+      }
+    }
+
     const body = await req.json();
     const {
       recipientId,
@@ -49,19 +82,25 @@ export async function POST(req: NextRequest) {
       });
     }
 
+    // Sanitize user inputs to prevent Telegram HTML entity parser failures & XSS
+    const safeTarget = escapeHtml(targetName);
+    const safeAction = escapeHtml(actionText);
+    const safeTitle = escapeHtml(verdictTitle);
+    const safeVerdict = escapeHtml(verdictText);
+
     // Clean anonymous caption under the photo
     const caption = isDark
       ? `⚖️ <b>ТЕМНАЯ КАНЦЕЛЯРИЯ КАРМЫ: ОФИЦИАЛЬНЫЙ ПРИГОВОР</b>\n\n` +
-        `👤 <b>Субъект:</b> ${targetName}\n` +
-        `📜 <b>Вменяемое деяние:</b> <i>«${actionText}»</i>\n\n` +
-        `🩸 <b>Приговор:</b> <b>${verdictTitle}</b>\n` +
-        `<i>«${verdictText}»</i>\n\n` +
+        `👤 <b>Субъект:</b> ${safeTarget}\n` +
+        `📜 <b>Вменяемое деяние:</b> <i>«${safeAction}»</i>\n\n` +
+        `🩸 <b>Приговор:</b> <b>${safeTitle}</b>\n` +
+        `<i>«${safeVerdict}»</i>\n\n` +
         `🏛️ <i>Печать астрального трибунала активна • Доставлено анонимно</i>`
       : `✨ <b>НЕБЕСНАЯ КАНЦЕЛЯРИЯ БЛАГОДАТИ: ГРАМОТА ДОБРА</b>\n\n` +
-        `👤 <b>Адресат:</b> ${targetName}\n` +
-        `🌟 <b>Доброе деяние:</b> <i>«${actionText}»</i>\n\n` +
-        `🕊️ <b>Благословение:</b> <b>${verdictTitle}</b>\n` +
-        `<i>«${verdictText}»</i>\n\n` +
+        `👤 <b>Адресат:</b> ${safeTarget}\n` +
+        `🌟 <b>Доброе деяние:</b> <i>«${safeAction}»</i>\n\n` +
+        `🕊️ <b>Благословение:</b> <b>${safeTitle}</b>\n` +
+        `<i>«${safeVerdict}»</i>\n\n` +
         `🏛️ <i>Заверено небесной канцелярией • Доставлено анонимно</i>`;
 
     let sent = false;
