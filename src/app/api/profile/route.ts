@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { userProfilesRegistry, usernameToChatIdMap } from '@/lib/userRegistryStore';
+import { userProfilesRegistry, usernameToChatIdMap, persistToDisk } from '@/lib/userRegistryStore';
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
@@ -39,6 +39,7 @@ export async function POST(req: NextRequest) {
       userProfilesRegistry.set(cleanUsername, profile);
     }
 
+    persistToDisk();
     return NextResponse.json({ success: true });
   } catch (err: unknown) {
     const errorMsg = err instanceof Error ? err.message : 'Unknown error';
