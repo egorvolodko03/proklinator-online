@@ -16,7 +16,8 @@ import {
   ShoppingBag, 
   Eye, 
   Crown, 
-  Star 
+  Star,
+  Share2 
 } from 'lucide-react';
 import { sound } from '@/lib/audio';
 import { triggerHaptic, openStarsPayment } from '@/lib/telegram';
@@ -125,6 +126,17 @@ export const KarmaShopModal: React.FC<KarmaShopModalProps> = ({
         onShowToast(errMsg, 'error');
       }
     );
+  };
+
+  const handleShareReferral = () => {
+    sound.playClick();
+    triggerHaptic('light');
+    const myId = profile.telegramUser?.id || 'friend';
+    const refUrl = `https://t.me/proklinator_bot?start=ref_${myId}`;
+    const text = '⚖️ Наслать шуточное проклятие или подарить благословение в Проклинаторе Онлайн:';
+    const shareUrl = `https://t.me/share/url?url=${encodeURIComponent(refUrl)}&text=${encodeURIComponent(text)}`;
+    window.open(shareUrl, '_blank');
+    onShowToast('🔗 Ссылка-приглашение открыта в Telegram!', 'success');
   };
 
   return (
@@ -264,6 +276,29 @@ export const KarmaShopModal: React.FC<KarmaShopModalProps> = ({
               </span>
             </button>
           </div>
+        </div>
+
+        {/* Referral Viral Program Card */}
+        <div className="mt-3 flex items-center justify-between gap-3 rounded-2xl border border-emerald-500/30 bg-emerald-950/20 p-3.5">
+          <div className="flex items-center gap-2.5">
+            <span className="text-2xl">🤝</span>
+            <div>
+              <div className="font-heading text-xs font-bold text-emerald-300">
+                Пригласи друга — получи +50 🪙
+              </div>
+              <div className="text-[10px] text-zinc-400 font-sans">
+                За каждого приглашенного друга начисляются кармоиды и зеркальный щит
+              </div>
+            </div>
+          </div>
+
+          <button
+            onClick={handleShareReferral}
+            className="flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 px-3.5 py-2 text-xs font-bold text-white shadow-[0_0_15px_rgba(16,185,129,0.3)] hover:brightness-110 active:scale-95 transition-all font-heading shrink-0"
+          >
+            <Share2 className="w-3.5 h-3.5" />
+            <span>Пригласить</span>
+          </button>
         </div>
 
         {/* Artifacts Grid */}
