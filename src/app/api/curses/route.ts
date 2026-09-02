@@ -1,9 +1,40 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { DecreeVerdict, KarmaFeedItem, KarmaRealm } from '@/types';
 import { INITIAL_FEED } from '@/data/feed';
+import fs from 'fs';
+import path from 'path';
 
-// Shared in-memory registry for short URLs: id -> DecreeVerdict
+const TMP_FILE = path.join(process.platform === 'win32' ? process.cwd() : '/tmp', '.decrees_cache.json');
+
+// In-memory registry with persistent file backup
 const decreeRegistry = new Map<string, DecreeVerdict>();
+
+function initDecrees() {
+  try {
+    if (fs.existsSync(TMP_FILE)) {
+      const content = fs.readFileSync(TMP_FILE, 'utf8');
+      const data = JSON.parse(content);
+      Object.entries(data).forEach(([k, v]) => {
+        decreeRegistry.set(k, v as DecreeVerdict);
+      });
+    }
+  } catch {
+    // ignore
+  }
+}
+
+function persistDecrees() {
+  try {
+    // Keep last 150 decrees in cache file
+    const entries = Array.from(decreeRegistry.entries()).slice(-150);
+    const obj = Object.fromEntries(entries);
+    fs.writeFileSync(TMP_FILE, JSON.stringify(obj), 'utf8');
+  } catch {
+    // ignore
+  }
+}
+
+initDecrees();
 
 let globalCurses: KarmaFeedItem[] = [...INITIAL_FEED];
 
@@ -12,7 +43,14 @@ export async function GET(req: NextRequest) {
   const id = searchParams.get('id');
 
   if (id) {
-    const verdict = decreeRegistry.get(id);
+    let verdict = decreeRegistry.get(id);
+
+    // If not found in memory, try re-reading cache file
+    if (!verdict) {
+      initDecrees();
+      verdict = decreeRegistry.get(id);
+    }
+
     if (verdict) {
       return NextResponse.json({ success: true, verdict });
     }
@@ -80,8 +118,9 @@ export async function POST(req: NextRequest) {
       isGoldenSeal: Boolean(isGoldenSeal),
     };
 
-    // Store in registry for short link lookups
+    // Store in registry and persist to disk
     decreeRegistry.set(decreeId, newVerdict);
+    persistDecrees();
 
     const newItem: KarmaFeedItem = {
       id: decreeId,
@@ -96,7 +135,6 @@ export async function POST(req: NextRequest) {
       timeAgo: 'Только что',
     };
 
-    // Keep real chronological list
     globalCurses = [newItem, ...globalCurses.filter((c) => c.id !== decreeId).slice(0, 49)];
 
     return NextResponse.json({ success: true, verdict: newVerdict, id: decreeId });

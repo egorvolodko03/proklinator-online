@@ -7,10 +7,17 @@ interface Props {
   searchParams: { [key: string]: string | string[] | undefined };
 }
 
+function getBaseUrl(): string {
+  if (process.env.NEXT_PUBLIC_BASE_URL) return process.env.NEXT_PUBLIC_BASE_URL;
+  if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
+  return 'https://proklinator-online.vercel.app';
+}
+
 async function getVerdict(id: string): Promise<DecreeVerdict | null> {
+  const baseUrl = getBaseUrl();
   try {
-    const res = await fetch(`https://proklinator-online.vercel.app/api/curses?id=${id}`, {
-      next: { revalidate: 60 },
+    const res = await fetch(`${baseUrl}/api/curses?id=${id}`, {
+      next: { revalidate: 30 },
     });
     if (res.ok) {
       const data = await res.json();
@@ -24,9 +31,9 @@ async function getVerdict(id: string): Promise<DecreeVerdict | null> {
 
 export async function generateMetadata({ params, searchParams }: Props): Promise<Metadata> {
   const id = params.id;
-  const baseUrl = 'https://proklinator-online.vercel.app';
+  const baseUrl = getBaseUrl();
 
-  let verdict = await getVerdict(id);
+  const verdict = await getVerdict(id);
 
   // Read from fetched verdict or searchParams fallback
   const name = verdict?.targetName || (typeof searchParams.name === 'string' ? searchParams.name : 'Гражданин');
