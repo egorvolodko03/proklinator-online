@@ -246,6 +246,11 @@ function AppContent() {
               verdict={viewingVerdict}
               onReset={() => setViewingVerdict(null)}
               onShowToast={addToast}
+              onCounterCurse={(targetName, newRealm) => {
+                setViewingVerdict(null);
+                setRealm(newRealm);
+                handleStartRitual(newRealm);
+              }}
             />
           </div>
         </div>

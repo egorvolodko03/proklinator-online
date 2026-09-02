@@ -2,9 +2,9 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Sparkles, Coins, Gift, Flame, Trophy, Check, RefreshCw, Lock, Clock, Award } from 'lucide-react';
+import { X, Sparkles, Coins, Gift, Flame, Trophy, Check, RefreshCw, Lock, Clock, Award, Star } from 'lucide-react';
 import { sound } from '@/lib/audio';
-import { triggerHaptic } from '@/lib/telegram';
+import { triggerHaptic, openStarsPayment } from '@/lib/telegram';
 import { karmaStore } from '@/lib/karmaStore';
 import { GACHA_PRIZES, spinRoulette } from '@/data/gacha';
 import { GachaPrize, UserKarmaProfile } from '@/types';
@@ -46,26 +46,7 @@ export const AltarRouletteModal: React.FC<AltarRouletteModalProps> = ({
   const isFreeDaily = profile.lastDailySpinDate !== todayStr;
   const spinCost = isFreeDaily ? 0 : 20;
 
-  const handleSpin = () => {
-    if (!profile.isAuthorized) {
-      if (onRequireAuth) onRequireAuth();
-      return;
-    }
-
-    if (isSpinning) return;
-    if (spinCost > 0 && profile.coins < spinCost) {
-      sound.playClick();
-      triggerHaptic('error');
-      onShowToast('Недостаточно Кармоидов 🪙 для вращения алтаря!', 'error');
-      return;
-    }
-
-    if (isFreeDaily) {
-      karmaStore.recordDailySpin();
-    } else {
-      karmaStore.addCoins(-spinCost);
-    }
-
+  const startSpinAnimation = () => {
     setIsSpinning(true);
     setWonPrize(null);
     sound.playDiceRoll();
@@ -76,24 +57,21 @@ export const AltarRouletteModal: React.FC<AltarRouletteModalProps> = ({
 
     const totalPrizes = GACHA_PRIZES.length;
     const startIndex = highlightIdx;
-    // Calculate exact distance from current index to winning index
     const distanceToWinner = (winningIndex - startIndex + totalPrizes) % totalPrizes;
-    // 3 full laps (24 steps) plus exact offset to winner
     const totalSteps = (totalPrizes * 3) + distanceToWinner;
 
     let step = 0;
 
-    // Casino-style deceleration physics curve
     const getDelayForStep = (current: number, total: number) => {
       const remaining = total - current;
-      if (remaining <= 1) return 680; // dramatic final landing
+      if (remaining <= 1) return 680;
       if (remaining <= 2) return 520;
       if (remaining <= 3) return 390;
       if (remaining <= 5) return 270;
       if (remaining <= 8) return 180;
       if (remaining <= 12) return 110;
       if (remaining <= 16) return 75;
-      return 45; // initial high speed
+      return 45;
     };
 
     const runStep = () => {
@@ -107,7 +85,6 @@ export const AltarRouletteModal: React.FC<AltarRouletteModalProps> = ({
         const nextDelay = getDelayForStep(step, totalSteps);
         animTimerRef.current = setTimeout(runStep, nextDelay);
       } else {
-        // Guaranteed to be on winningIndex exactly! No jumps, no skips!
         setIsSpinning(false);
         setWonPrize(selectedPrize);
         karmaStore.applyGachaPrize(selectedPrize);
@@ -132,6 +109,51 @@ export const AltarRouletteModal: React.FC<AltarRouletteModalProps> = ({
     };
 
     animTimerRef.current = setTimeout(runStep, 45);
+  };
+
+  const handleSpin = () => {
+    if (!profile.isAuthorized) {
+      if (onRequireAuth) onRequireAuth();
+      return;
+    }
+
+    if (isSpinning) return;
+    if (spinCost > 0 && profile.coins < spinCost) {
+      sound.playClick();
+      triggerHaptic('error');
+      onShowToast('Недостаточно Кармоидов 🪙 для вращения алтаря!', 'error');
+      return;
+    }
+
+    if (isFreeDaily) {
+      karmaStore.recordDailySpin();
+    } else {
+      karmaStore.addCoins(-spinCost);
+    }
+
+    startSpinAnimation();
+  };
+
+  const handleStarsSpin = () => {
+    if (!profile.isAuthorized) {
+      if (onRequireAuth) onRequireAuth();
+      return;
+    }
+    if (isSpinning) return;
+
+    sound.playGoldenBell();
+    triggerHaptic('medium');
+
+    openStarsPayment(
+      'spin_altar',
+      () => {
+        onShowToast('⭐️ 10 Stars получено! Алтарь пробуждается...', 'success');
+        startSpinAnimation();
+      },
+      (err) => {
+        onShowToast(err, 'error');
+      }
+    );
   };
 
   return (
@@ -228,7 +250,7 @@ export const AltarRouletteModal: React.FC<AltarRouletteModalProps> = ({
         </AnimatePresence>
 
         {/* Spin CTA Button */}
-        <div className="mt-5">
+        <div className="mt-5 space-y-2">
           <button
             onClick={handleSpin}
             disabled={isSpinning}
@@ -253,15 +275,26 @@ export const AltarRouletteModal: React.FC<AltarRouletteModalProps> = ({
             ) : (
               <>
                 <Coins className="w-5 h-5 text-void-950" />
-                <span>Вращать Алтарь за 20 🪙 (Бесплатное завтра)</span>
+                <span>Вращать Алтарь за 20 🪙</span>
               </>
             )}
           </button>
 
+          {/* Telegram Stars Fast Spin Button */}
+          {!isFreeDaily && !isSpinning && (
+            <button
+              onClick={handleStarsSpin}
+              className="w-full py-3 rounded-2xl font-heading text-xs sm:text-sm font-bold bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-500 text-void-950 shadow-[0_0_25px_rgba(251,191,36,0.3)] hover:brightness-110 active:scale-95 transition-all flex items-center justify-center gap-1.5"
+            >
+              <Star className="w-4 h-4 fill-void-950 text-void-950" />
+              <span>Вращать мгновенно за 10 Stars ⭐️</span>
+            </button>
+          )}
+
           {!isFreeDaily && (
-            <div className="mt-2 text-[11px] text-zinc-400 font-sans flex items-center justify-center gap-1.5">
+            <div className="mt-1.5 text-[11px] text-zinc-400 font-sans flex items-center justify-center gap-1.5">
               <Clock className="w-3.5 h-3.5 text-karma-gold" />
-              <span>Бесплатное вращение обновится в 00:00 (МСК)</span>
+              <span>Бесплатный спин обновится в 00:00 (МСК)</span>
             </div>
           )}
         </div>

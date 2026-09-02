@@ -181,6 +181,13 @@ export class KarmaStore {
     this.notify();
   }
 
+  public giveGoldenSeal() {
+    this.profile.hasGoldenSeal = true;
+    this.profile.useGoldenSealForNext = true;
+    this.save();
+    this.notify();
+  }
+
   public toggleUseGoldenSeal() {
     if (this.profile.hasGoldenSeal) {
       this.profile.useGoldenSealForNext = !this.profile.useGoldenSealForNext;

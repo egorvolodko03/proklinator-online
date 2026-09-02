@@ -2,7 +2,7 @@
 
 import React, { useRef, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Download, Copy, Send, RotateCcw, Flame, Sun, Check, ShieldAlert, Sparkles, Heart } from 'lucide-react';
+import { Download, Copy, Send, RotateCcw, Flame, Sun, Check, ShieldAlert, Sparkles, Heart, Share2, Zap } from 'lucide-react';
 import { DecreeVerdict } from '@/types';
 import { CATEGORY_LABELS } from '@/lib/utils';
 import { sound } from '@/lib/audio';
@@ -15,12 +15,14 @@ interface CurseCertificateProps {
   verdict: DecreeVerdict;
   onReset: () => void;
   onShowToast: (text: string, type?: 'success' | 'info' | 'error') => void;
+  onCounterCurse?: (targetName: string, realm: 'dark' | 'light') => void;
 }
 
 export const CurseCertificate: React.FC<CurseCertificateProps> = ({
   verdict,
   onReset,
   onShowToast,
+  onCounterCurse,
 }) => {
   const certRef = useRef<HTMLDivElement | null>(null);
   const [isDownloading, setIsDownloading] = useState(false);
@@ -92,6 +94,36 @@ export const CurseCertificate: React.FC<CurseCertificateProps> = ({
     } finally {
       setIsDownloading(false);
     }
+  };
+
+  const handleShareToStory = () => {
+    sound.playGoldenBell();
+    triggerHaptic('success');
+    const tg = typeof window !== 'undefined' ? (window as any).Telegram?.WebApp : null;
+    const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'https://proklinator-online.vercel.app';
+    const ogImageUrl = `${baseUrl}/api/og?realm=${verdict.realm}&name=${encodeURIComponent(verdict.targetName)}&sin=${encodeURIComponent(verdict.actionText)}&curse=${encodeURIComponent(verdict.verdictText)}&title=${encodeURIComponent(verdict.verdictTitle)}&case=${encodeURIComponent(verdict.caseNumber || verdict.id)}`;
+    const decreeUrl = `${baseUrl}/c/${verdict.id}`;
+
+    if (tg && typeof tg.shareToStory === 'function') {
+      try {
+        tg.shareToStory(ogImageUrl, {
+          text: isDark
+            ? `⚖️ «${verdict.targetName}» признан виновным!\n🩸 Приговор: ${verdict.verdictText}`
+            : `✨ «${verdict.targetName}» награжден благодатью!\n🕊️ Награда: ${verdict.verdictText}`,
+          widget_link: {
+            url: decreeUrl,
+            name: 'Открыть грамоту',
+          },
+        });
+        onShowToast('📱 Открываем редактор историй Telegram...', 'success');
+        return;
+      } catch (err) {
+        console.warn('shareToStory failed', err);
+      }
+    }
+
+    handleCopyLink();
+    onShowToast('Ссылка скопирована! Вставьте её в Историю Telegram.', 'info');
   };
 
   /**
@@ -383,6 +415,47 @@ export const CurseCertificate: React.FC<CurseCertificateProps> = ({
           <Send className="w-5 h-5" />
           <span>{isSending ? 'Подготовка и отправка...' : 'Отправить фото в Telegram'}</span>
         </button>
+
+        {/* Stories & Counter-Action Row */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          {/* Telegram Stories Button */}
+          <button
+            onClick={handleShareToStory}
+            className="flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-purple-600 via-pink-600 to-amber-500 p-[1px] shadow-lg hover:scale-[1.02] active:scale-95 transition-all font-heading"
+          >
+            <div className="flex h-full w-full items-center justify-center gap-2 rounded-[11px] bg-void-950/90 px-4 py-2.5 hover:bg-void-900 transition-colors">
+              <Share2 className="w-4 h-4 text-pink-400" />
+              <span className="text-xs font-bold text-white">📱 В Историю Telegram</span>
+            </div>
+          </button>
+
+          {/* Counter-Curse Action Button */}
+          {onCounterCurse ? (
+            <button
+              onClick={() => {
+                sound.playClick();
+                triggerHaptic('medium');
+                onCounterCurse(verdict.targetName, isDark ? 'light' : 'dark');
+              }}
+              className={`flex items-center justify-center gap-2 rounded-xl border px-4 py-2.5 text-xs font-bold transition-all hover:scale-[1.02] active:scale-95 font-heading ${
+                isDark
+                  ? 'border-amber-400/50 bg-amber-500/15 text-amber-300 hover:bg-amber-500/25 shadow-glow-gold'
+                  : 'border-inferno-500/50 bg-inferno-500/15 text-inferno-300 hover:bg-inferno-500/25'
+              }`}
+            >
+              <Zap className="w-4 h-4" />
+              <span>{isDark ? '✨ Ответить Благодатью' : '⚡ Ответный Удар'}</span>
+            </button>
+          ) : (
+            <button
+              onClick={handleCopyLink}
+              className="flex items-center justify-center gap-2 rounded-xl border border-void-700 bg-void-900/90 px-4 py-2.5 text-xs font-bold text-zinc-200 hover:border-karma-gold hover:text-white transition-all font-heading"
+            >
+              {isCopied ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4 text-zinc-400" />}
+              <span>{isCopied ? 'Скопировано!' : 'Короткая ссылка'}</span>
+            </button>
+          )}
+        </div>
 
         {/* Secondary Actions Row */}
         <div className="grid grid-cols-2 gap-2">

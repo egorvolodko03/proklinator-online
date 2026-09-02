@@ -109,3 +109,46 @@ export function initTelegramMiniApp(): TelegramUser | null {
   }
   return getTelegramUser();
 }
+
+/**
+ * Modern Telegram Stars (XTR) payment trigger
+ */
+export async function openStarsPayment(
+  itemId: string,
+  onSuccess: () => void,
+  onError: (msg: string) => void
+) {
+  const user = getTelegramUser();
+  try {
+    const res = await fetch('/api/telegram/invoice', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ itemId, userId: user?.id }),
+    });
+    const data = await res.json();
+    if (!data.success) {
+      onError(data.error || 'Ошибка формирования счёта в Stars');
+      return;
+    }
+
+    const tg = (window as any).Telegram?.WebApp;
+    if (tg?.openInvoice && !data.isMock) {
+      tg.openInvoice(data.invoiceLink, (status: string) => {
+        if (status === 'paid') {
+          triggerHaptic('success');
+          onSuccess();
+        } else if (status === 'cancelled') {
+          onError('Оплата звёздами отменена');
+        } else {
+          onError(`Статус оплаты: ${status}`);
+        }
+      });
+    } else {
+      // Fallback: in browser or mock environment, simulate Stars payment
+      triggerHaptic('success');
+      onSuccess();
+    }
+  } catch {
+    onError('Сетевая ошибка при запросе к Telegram Stars');
+  }
+}

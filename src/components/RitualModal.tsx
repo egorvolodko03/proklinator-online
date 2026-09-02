@@ -796,6 +796,11 @@ export const RitualModal: React.FC<RitualModalProps> = ({
                   verdict={verdict}
                   onReset={handleReset}
                   onShowToast={onShowToast}
+                  onCounterCurse={(name) => {
+                    handleReset();
+                    setTargetName(name);
+                    setStep(1);
+                  }}
                 />
               </motion.div>
             )}

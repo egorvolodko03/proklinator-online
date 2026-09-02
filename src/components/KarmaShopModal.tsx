@@ -12,15 +12,14 @@ import {
   Sun, 
   Coffee, 
   Gift, 
-  Zap,
-  ShoppingBag,
-  Eye,
-  Crown,
-  ToggleLeft,
-  ToggleRight
+  Zap, 
+  ShoppingBag, 
+  Eye, 
+  Crown, 
+  Star 
 } from 'lucide-react';
 import { sound } from '@/lib/audio';
-import { triggerHaptic } from '@/lib/telegram';
+import { triggerHaptic, openStarsPayment } from '@/lib/telegram';
 import { karmaStore, SHOP_ARTIFACTS } from '@/lib/karmaStore';
 import { ShopArtifact, UserKarmaProfile } from '@/types';
 import confetti from 'canvas-confetti';
@@ -101,6 +100,30 @@ export const KarmaShopModal: React.FC<KarmaShopModalProps> = ({
         ? '👑 Золотая Печать активирована на следующую грамоту!'
         : 'Печать переведена в резерв инвентаря.',
       'info'
+    );
+  };
+
+  const handleBuyWithStars = (itemId: string, itemName: string, amountToCredit: () => void) => {
+    sound.playGoldenBell();
+    triggerHaptic('medium');
+    openStarsPayment(
+      itemId,
+      () => {
+        amountToCredit();
+        sound.playVerdictChime();
+        try {
+          confetti({
+            particleCount: 50,
+            spread: 70,
+            origin: { y: 0.5 },
+            colors: ['#fbbf24', '#f59e0b', '#38bdf8'],
+          });
+        } catch {}
+        onShowToast(`⭐️ Успешно приобретено: «${itemName}»!`, 'success');
+      },
+      (errMsg) => {
+        onShowToast(errMsg, 'error');
+      }
     );
   };
 
@@ -188,8 +211,63 @@ export const KarmaShopModal: React.FC<KarmaShopModalProps> = ({
           </button>
         </div>
 
+        {/* Telegram Stars VIP Offers Banner */}
+        <div className="mt-4 rounded-2xl border border-amber-400/40 bg-gradient-to-r from-amber-500/15 via-yellow-500/10 to-amber-500/15 p-3.5">
+          <div className="flex items-center justify-between mb-2.5">
+            <div className="flex items-center gap-2">
+              <Star className="w-4 h-4 text-yellow-400 fill-yellow-400" />
+              <span className="font-heading text-xs font-bold text-yellow-300 uppercase tracking-wider">
+                VIP Наборы за Telegram Stars (⭐️)
+              </span>
+            </div>
+            <span className="text-[10px] text-zinc-400 font-mono">Мгновенная доставка</span>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <button
+              onClick={() =>
+                handleBuyWithStars('coins_100', '100 Кармоидов 🪙', () => {
+                  karmaStore.addCoins(100);
+                })
+              }
+              className="flex items-center justify-between rounded-xl border border-void-800 bg-void-900/80 px-3 py-2 hover:border-amber-400/60 hover:bg-void-850 transition-all text-left"
+            >
+              <div className="flex items-center gap-2">
+                <span className="text-xl">🪙</span>
+                <div>
+                  <div className="font-heading text-xs font-bold text-white">+100 Кармоидов</div>
+                  <div className="text-[10px] text-zinc-400">На спины и лавку</div>
+                </div>
+              </div>
+              <span className="flex items-center gap-1 text-xs font-bold text-yellow-400 font-mono bg-amber-500/20 px-2 py-1 rounded-lg border border-amber-400/40">
+                15 ⭐️
+              </span>
+            </button>
+
+            <button
+              onClick={() =>
+                handleBuyWithStars('golden_seal_pack', 'Набор Золотых Печатей (x5)', () => {
+                  karmaStore.giveGoldenSeal();
+                })
+              }
+              className="flex items-center justify-between rounded-xl border border-void-800 bg-void-900/80 px-3 py-2 hover:border-amber-400/60 hover:bg-void-850 transition-all text-left"
+            >
+              <div className="flex items-center gap-2">
+                <span className="text-xl">👑</span>
+                <div>
+                  <div className="font-heading text-xs font-bold text-white">Золотая Печать</div>
+                  <div className="text-[10px] text-zinc-400">VIP Сургуч на грамоты</div>
+                </div>
+              </div>
+              <span className="flex items-center gap-1 text-xs font-bold text-yellow-400 font-mono bg-amber-500/20 px-2 py-1 rounded-lg border border-amber-400/40">
+                25 ⭐️
+              </span>
+            </button>
+          </div>
+        </div>
+
         {/* Artifacts Grid */}
-        <div className="mt-5 space-y-3 max-h-[55vh] overflow-y-auto pr-1">
+        <div className="mt-4 space-y-3 max-h-[48vh] overflow-y-auto pr-1">
           {SHOP_ARTIFACTS.map((artifact) => {
             const canAfford = profile.coins >= artifact.cost;
             return (
