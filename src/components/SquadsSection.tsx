@@ -18,9 +18,10 @@ import { sound } from '@/lib/audio';
 import { triggerHaptic } from '@/lib/telegram';
 import { squadStore } from '@/lib/squadStore';
 import { karmaStore } from '@/lib/karmaStore';
-import { Squad, SquadMember, UserKarmaProfile } from '@/types';
+import { Squad, SquadMember, UserKarmaProfile, KarmaRealm } from '@/types';
 
 interface SquadsSectionProps {
+  realm?: KarmaRealm;
   onOpenSquadsModal: () => void;
   onTargetMember: (member: SquadMember, squad: Squad) => void;
   onShowToast: (text: string, type?: 'success' | 'info' | 'error') => void;
@@ -28,6 +29,7 @@ interface SquadsSectionProps {
 }
 
 export const SquadsSection: React.FC<SquadsSectionProps> = ({
+  realm = 'dark',
   onOpenSquadsModal,
   onTargetMember,
   onShowToast,
@@ -58,7 +60,7 @@ export const SquadsSection: React.FC<SquadsSectionProps> = ({
   }, [selectedSquadId]);
 
   const currentSquad = squads.find((s) => s.id === selectedSquadId) || squads[0];
-  const isLight = profile.selectedRealm === 'light';
+  const isLight = realm === 'light';
 
   const handleAction = () => {
     if (!profile.isAuthorized && onRequireAuth) {

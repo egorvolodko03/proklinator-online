@@ -168,6 +168,7 @@ function AppContent() {
 
         {/* Squads & Guilds Hub Section */}
         <SquadsSection
+          realm={realm}
           onOpenSquadsModal={() => {
             if (!karmaStore.isAuthorized()) setIsAuthOpen(true);
             else setIsSquadsOpen(true);
