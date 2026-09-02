@@ -74,28 +74,40 @@ export const AltarRouletteModal: React.FC<AltarRouletteModalProps> = ({
     const selectedPrize = spinRoulette();
     const winningIndex = GACHA_PRIZES.findIndex((p) => p.id === selectedPrize.id);
 
-    // Realistic roulette deceleration algorithm
-    const totalSteps = 24 + (winningIndex >= 0 ? winningIndex : 0);
-    let currentStep = 0;
-    let delay = 50;
+    const totalPrizes = GACHA_PRIZES.length;
+    const startIndex = highlightIdx;
+    // Calculate exact distance from current index to winning index
+    const distanceToWinner = (winningIndex - startIndex + totalPrizes) % totalPrizes;
+    // 3 full laps (24 steps) plus exact offset to winner
+    const totalSteps = (totalPrizes * 3) + distanceToWinner;
+
+    let step = 0;
+
+    // Casino-style deceleration physics curve
+    const getDelayForStep = (current: number, total: number) => {
+      const remaining = total - current;
+      if (remaining <= 1) return 680; // dramatic final landing
+      if (remaining <= 2) return 520;
+      if (remaining <= 3) return 390;
+      if (remaining <= 5) return 270;
+      if (remaining <= 8) return 180;
+      if (remaining <= 12) return 110;
+      if (remaining <= 16) return 75;
+      return 45; // initial high speed
+    };
 
     const runStep = () => {
-      currentStep++;
-      setHighlightIdx(currentStep % GACHA_PRIZES.length);
+      step++;
+      const currentIdx = (startIndex + step) % totalPrizes;
+      setHighlightIdx(currentIdx);
       sound.playClick();
+      triggerHaptic('light');
 
-      if (currentStep < totalSteps) {
-        // Gradually increase delay as it approaches the end (deceleration)
-        if (currentStep > totalSteps - 10) {
-          delay += 35;
-        } else if (currentStep > totalSteps - 5) {
-          delay += 60;
-        } else {
-          delay = Math.min(delay + 3, 140);
-        }
-        animTimerRef.current = setTimeout(runStep, delay);
+      if (step < totalSteps) {
+        const nextDelay = getDelayForStep(step, totalSteps);
+        animTimerRef.current = setTimeout(runStep, nextDelay);
       } else {
-        // Landed on winner
+        // Guaranteed to be on winningIndex exactly! No jumps, no skips!
         setIsSpinning(false);
         setWonPrize(selectedPrize);
         karmaStore.applyGachaPrize(selectedPrize);
@@ -106,8 +118,8 @@ export const AltarRouletteModal: React.FC<AltarRouletteModalProps> = ({
 
         try {
           confetti({
-            particleCount: 60,
-            spread: 80,
+            particleCount: 65,
+            spread: 85,
             origin: { y: 0.6 },
             colors: ['#fbbf24', '#f59e0b', '#8b5cf6', '#10b981', '#f43f5e'],
           });
@@ -119,7 +131,7 @@ export const AltarRouletteModal: React.FC<AltarRouletteModalProps> = ({
       }
     };
 
-    animTimerRef.current = setTimeout(runStep, delay);
+    animTimerRef.current = setTimeout(runStep, 45);
   };
 
   return (
