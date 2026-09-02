@@ -5,15 +5,14 @@ import { motion } from 'framer-motion';
 import { 
   Users, 
   Plus, 
-  Key, 
   Copy, 
   Check, 
   Flame, 
   Sun, 
   Send, 
   Crown, 
-  Lock,
-  UserPlus
+  Sparkles,
+  Heart
 } from 'lucide-react';
 import { sound } from '@/lib/audio';
 import { triggerHaptic } from '@/lib/telegram';
@@ -59,6 +58,7 @@ export const SquadsSection: React.FC<SquadsSectionProps> = ({
   }, [selectedSquadId]);
 
   const currentSquad = squads.find((s) => s.id === selectedSquadId) || squads[0];
+  const isLight = profile.selectedRealm === 'light';
 
   const handleAction = () => {
     if (!profile.isAuthorized && onRequireAuth) {
@@ -92,12 +92,12 @@ export const SquadsSection: React.FC<SquadsSectionProps> = ({
           <div>
             <h3 className="font-heading text-base sm:text-xl font-bold text-white flex items-center gap-2">
               <span>Офисные Сквады & Команды</span>
-              <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-karma-gold/20 text-karma-gold border border-karma-gold/30">
+              <span className="text-[10px] font-mono px-2.5 py-0.5 rounded-full bg-karma-gold/20 text-karma-gold border border-karma-gold/30">
                 Закрытые чаты
               </span>
             </h3>
             <p className="text-xs text-zinc-400 font-sans">
-              Объединяйтесь с коллегами, соседями и друзьями для анонимного кармического суда
+              Объединяйтесь с коллегами, соседями и друзьями для анонимного кармического суда и благословений
             </p>
           </div>
         </div>
@@ -179,7 +179,9 @@ export const SquadsSection: React.FC<SquadsSectionProps> = ({
               <div className="mt-5 border-t border-void-800 pt-4">
                 <div className="flex items-center justify-between text-xs font-bold text-zinc-300 font-heading uppercase tracking-wider mb-3">
                   <span>Участники сквада ({currentSquad.members.length}):</span>
-                  <span className="text-[11px] text-zinc-500 font-normal">Нажмите «Наслать», чтобы отправить анонимный вердикт</span>
+                  <span className="text-[11px] text-zinc-500 font-normal">
+                    {isLight ? 'Нажмите «Благословить» для награждения' : 'Нажмите «Покарать» для анонимной кары'}
+                  </span>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5">
@@ -211,10 +213,14 @@ export const SquadsSection: React.FC<SquadsSectionProps> = ({
                           triggerHaptic('medium');
                           onTargetMember(member, currentSquad);
                         }}
-                        className="flex items-center gap-1 rounded-lg bg-void-800 hover:bg-inferno-600 hover:text-white px-2.5 py-1.5 text-[11px] font-semibold text-zinc-300 transition-all font-heading shrink-0 ml-2"
+                        className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[11px] font-bold transition-all font-heading shrink-0 ml-2 shadow-sm ${
+                          isLight
+                            ? 'bg-amber-500/20 text-amber-300 border border-amber-400/40 hover:bg-amber-400 hover:text-void-950'
+                            : 'bg-void-800 text-zinc-300 border border-void-700 hover:bg-inferno-600 hover:text-white hover:border-inferno-500'
+                        }`}
                       >
-                        <Send className="w-3 h-3" />
-                        <span>Наслать</span>
+                        {isLight ? <Sparkles className="w-3 h-3" /> : <Flame className="w-3 h-3" />}
+                        <span>{isLight ? 'Благословить' : 'Покарать'}</span>
                       </button>
                     </div>
                   ))}
